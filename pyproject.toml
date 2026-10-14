@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "trm-engine"
+version = "0.1.0"
+description = "Machine-readable, source-cited Technical Reference Manual (TRM) calculation engine"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trm_engine"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/trm_engine", "tests", "README.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
