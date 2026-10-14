@@ -37,6 +37,6 @@ def test_yaml_functions_match_python_implementations(measure):
     functions = IMPLEMENTATIONS[measure.id]
     named = [(c.implementation.function, c.variables) for c in measure.calculations] + [
         (v.function, v.variables) for v in measure.variables if v.source is VariableSource.DERIVED
-    ]
+    ] + [(w.function, w.variables) for w in measure.warnings if w.function]
     for name, variables in named:
         assert list(inspect.signature(functions[name]).parameters) == variables, name

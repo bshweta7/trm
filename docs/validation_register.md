@@ -63,6 +63,7 @@ Page numbers are the printed page numbers, which match the PDF page numbers.
 | [VR-023](#vr-023) | LFSH | Regulatory applicability | Water heater types not covered (e.g. heat pump water heaters) | **Yes** | Open |
 | [VR-024](#vr-024) | LFSH | Ambiguous methodology | Rounding of intermediate values | Minor | Open |
 | [VR-025](#vr-025) | Both | Regulatory applicability | Source is a draft TRM | **Yes** | Open |
+| [VR-026](#vr-026) | LFSH | Regulatory applicability | Eligibility when installed flow ≥ baseline flow | **Yes** (warning) | Open |
 
 ---
 
@@ -226,12 +227,12 @@ Page numbers are the printed page numbers, which match the PDF page numbers.
 - **Source:** p. 71 (ENERGY STAR V6.2, footnote 187 links to the 2025 *Most Efficient* criteria); p. 72 (ENERGY STAR 16.0 SEER2 / 8.0 HSPF2 / 11.0 EER2); p. 73 (efficient condition "or other specifications as determined by the programs"; ENERGY STAR revision expected for 2026)
 - **Description:** The efficient condition refers to ENERGY STAR, but the version cited in the text (V6.2) and the linked document (2025 Most Efficient) differ. Programs may also set their own specifications.
 - **Conflicting values or formulas:** ENERGY STAR before 1/1/2023: 15 SEER / 8.5 HSPF / 12.5 EER. After: 16.0 SEER2 / 8.0 HSPF2 / 11.0 EER2.
-- **Current implementation decision:** No minimum efficiency is enforced for the efficient unit, apart from ratings being positive.
-- **Rationale:** The applicable specification is a program decision, and the TRM allows program-defined specifications.
+- **Current implementation decision:** No minimum efficiency is enforced for the efficient unit, apart from ratings being positive. Every Time of Sale result carries the warning `efficient_equipment_eligibility_not_verified`, which references this issue. Equipment below any standard is still calculated, not rejected.
+- **Rationale:** The applicable specification is a program decision, and the TRM allows program-defined specifications. A warning makes the gap visible without inventing thresholds.
 - **Potential impact:** Users can calculate savings for units that would not qualify for a program.
 - **Question for expert:** Should the calculator enforce a minimum efficient-unit specification, and if so which one?
-- **Linked definitions:** ASHP `variables[seer_efficient, hspf_efficient, eer_efficient]`, `applications[time_of_sale]`
-- **Linked tests:** —
+- **Linked definitions:** ASHP `variables[seer_efficient, hspf_efficient, eer_efficient]`, `applications[time_of_sale]`, `warnings[efficient_equipment_eligibility_not_verified]`
+- **Linked tests:** `tests/de_v5/test_air_source_heat_pump.py::test_eligibility_warning_is_returned_without_changing_results`, `::test_eligibility_warning_does_not_reject_low_efficiency_equipment`
 - **Review status:** Open
 - **Reviewer:**
 - **Review date:**
@@ -489,14 +490,14 @@ Page numbers are the printed page numbers, which match the PDF page numbers.
 - **Description:**
   1. The baseline section allows measured existing flow for *direct install* programs, but the GPMbase definition says "or actual flow rate if recorded" without limiting it to direct install.
   2. If the baseline is measured, the installed unit's *measured* flow must be used too. The calculator cannot verify this.
-  3. The TRM does not say what to do if the measured baseline is below the installed flow rate, which gives negative savings.
+  3. The TRM does not say what to do if the measured baseline is at or below the installed flow rate, which gives zero or negative savings. The eligibility question is tracked separately as VR-026.
 - **Conflicting values or formulas:** —
-- **Current implementation decision:** `gpm_base` is optional (default 2.5) for both applications. The measured-flow coupling is documented but not enforced. Negative savings are returned unchanged.
+- **Current implementation decision:** `gpm_base` is optional (default 2.5) for both applications. The measured-flow coupling is documented but not enforced. Zero or negative savings are returned unchanged, with the warning `no_positive_water_savings` (see VR-026).
 - **Rationale:** No TRM rule to enforce; avoids inventing eligibility rules.
 - **Potential impact:** Users could combine a measured baseline with a rated installed flow, which the TRM disallows. Negative results are possible.
-- **Question for expert:** Should a measured baseline be allowed for Time of Sale? Should installations where the measured baseline is ≤ the installed flow be rejected or reported as zero?
+- **Question for expert:** Should a measured baseline be allowed for Time of Sale? When a baseline is measured, must the installed flow also be measured?
 - **Linked definitions:** LFSH `variables[gpm_base, gpm_low]`, `applications[direct_install, time_of_sale]`
-- **Linked tests:** `tests/de_v5/test_low_flow_shower_head.py::test_measured_baseline_below_installed_flow_is_not_rejected`, `::test_measured_flow_and_known_household_size`
+- **Linked tests:** `tests/de_v5/test_low_flow_shower_head.py::test_measured_flow_and_known_household_size`, `::test_equal_flow_rates_warn_and_give_zero_savings`, `::test_installed_flow_above_baseline_warns_and_keeps_negative_result`
 - **Review status:** Open
 - **Reviewer:**
 - **Review date:**
@@ -601,6 +602,30 @@ Page numbers are the printed page numbers, which match the PDF page numbers.
 - **Question for expert:** Has a final v5.0 been adopted? If so, where is it published and from what date is it effective?
 - **Linked definitions:** ASHP and LFSH top-level `source` and `issues`
 - **Linked tests:** `tests/de_v5/test_air_source_heat_pump.py::test_provenance_of_resolved_variables`
+- **Review status:** Open
+- **Reviewer:**
+- **Review date:**
+- **Resolution:**
+
+---
+
+## Added after initial review
+
+### VR-026
+
+**Eligibility of installations with no flow reduction**
+
+- **Measure / TRM version:** Low Flow Shower Head, DE TRM 5.0 (draft)
+- **Category:** Regulatory applicability
+- **Source:** p. 174 (Measure Description: low flow ≤ 2.0 GPM; Definition of Efficient Condition: "a lower GPM flow than required by code"; GPMbase: "or actual flow rate if recorded")
+- **Description:** With the default 2.5 GPM baseline and the ≤ 2.0 GPM limit (VR-021), savings are always positive. With a measured baseline (VR-020), the installed flow can equal or exceed the baseline, for example a measured 1.8 GPM existing showerhead replaced by a 2.0 GPM unit. The TRM does not say whether such an installation is eligible, or whether its savings should be claimed as zero or as the negative calculated value.
+- **Conflicting values or formulas:** — (the equations give zero savings when GPMlow = GPMbase and negative savings when GPMlow > GPMbase)
+- **Current implementation decision:** Return the calculated result unchanged (zero or negative), together with the result warning `no_positive_water_savings` whenever `gpm_low ≥ gpm_base`. The warning includes both flow rates and references VR-020 and VR-026. The installation is not rejected and results are not clamped to zero.
+- **Rationale:** Rejecting or clamping would invent an eligibility rule the TRM does not state. The warning makes the condition machine-readable for the caller.
+- **Potential impact:** Programs could claim negative or zero savings, or count ineligible installations, if callers ignore the warning.
+- **Question for expert:** If the installed flow rate is equal to or greater than the measured baseline, is the installation ineligible? If it is eligible, should savings be reported as zero or as the calculated negative value?
+- **Linked definitions:** LFSH `warnings[no_positive_water_savings]`, `variables[gpm_base, gpm_low]`
+- **Linked tests:** `tests/de_v5/test_low_flow_shower_head.py::test_equal_flow_rates_warn_and_give_zero_savings`, `::test_installed_flow_above_baseline_warns_and_keeps_negative_result`, `::test_no_warning_when_flow_is_reduced`
 - **Review status:** Open
 - **Reviewer:**
 - **Review date:**

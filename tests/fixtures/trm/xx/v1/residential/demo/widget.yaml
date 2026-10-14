@@ -145,6 +145,18 @@ calculations:
     source: {page: 1}
     issues: [VR-000]
 
+warnings:
+  - id: always_shown
+    applications: [time_of_sale]
+    message: Shown on every Time of Sale result.
+    issues: [VR-000]
+
+  - id: large_quantity
+    applications: [time_of_sale]
+    message: More than five widgets.
+    function: large_quantity
+    variables: [quantity]
+
 status:
   metadata_extracted: true
   variables_extracted: false

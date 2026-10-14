@@ -341,6 +341,18 @@ calculations:
     source: {page: 177, section: Annual Water Savings Algorithm; kWh Savings from Water Reduction}
     issues: [VR-019]
 
+warnings:
+  - id: no_positive_water_savings
+    applications: [direct_install, time_of_sale]
+    message: >-
+      The installed flow rate is not below the baseline flow rate, so the
+      installation produces no positive water savings. Calculated results
+      (zero or negative) are returned unchanged; the TRM does not say whether
+      such installations are eligible.
+    function: installed_flow_not_below_baseline
+    variables: [gpm_base, gpm_low]
+    issues: [VR-020, VR-026]
+
 measure_life:
   value: 10
   unit: years

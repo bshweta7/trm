@@ -24,7 +24,7 @@ def yaml_issue_ids() -> set[str]:
     for entry in registry.entries():
         m = registry.get(entry.id)
         ids.update(m.issues)
-        for group in (m.applications, m.variables, m.lookups.values(), m.calculations):
+        for group in (m.applications, m.variables, m.lookups.values(), m.calculations, m.warnings):
             for item in group:
                 ids.update(item.issues)
     return ids

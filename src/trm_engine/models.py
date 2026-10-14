@@ -178,6 +178,27 @@ class Calculation(StrictModel):
         return self
 
 
+class WarningRule(StrictModel):
+    """A warning returned with results. Not an error: outputs are still calculated.
+
+    Emitted on every calculation for the listed applications, or, when
+    ``function`` is given, only when that function returns True for ``variables``.
+    """
+
+    id: Identifier
+    applications: list[Identifier]
+    message: str
+    function: Identifier | None = None
+    variables: list[Identifier] = Field(default_factory=list)
+    issues: list[IssueId] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _function_needs_variables(self) -> Self:
+        if (self.function is None) != (not self.variables):
+            raise ValueError(f"warning {self.id}: function and variables must be given together")
+        return self
+
+
 class Status(StrictModel):
     """Implementation and validation status (architecture.md section 18)."""
 
@@ -233,6 +254,7 @@ class Measure(StrictModel):
     lookups: dict[Identifier, Lookup] = Field(default_factory=dict)
     outputs: list[Output]
     calculations: list[Calculation]
+    warnings: list[WarningRule] = Field(default_factory=list)
     measure_life: MeasureLife | None = None
     status: Status
     review: Review = Review()
@@ -250,6 +272,7 @@ class Measure(StrictModel):
             ("output", [o.id for o in self.outputs]),
             ("application", [a.id for a in self.applications]),
             ("calculation", [c.id for c in self.calculations]),
+            ("warning", [w.id for w in self.warnings]),
         ):
             if len(ids) != len(set(ids)):
                 errors.append(f"duplicate {kind} ids")
@@ -288,6 +311,14 @@ class Measure(StrictModel):
                 if var is None or var.choices is None or choice not in {ch.id for ch in var.choices}:
                     errors.append(f"calculation {c.id}: invalid applies_when {var_id}={choice}")
 
+        for w in self.warnings:
+            for app in w.applications:
+                if app not in applications:
+                    errors.append(f"warning {w.id}: unknown application {app!r}")
+            for dep in w.variables:
+                if dep not in variables:
+                    errors.append(f"warning {w.id}: unknown variable {dep!r}")
+
         for app in self.applications:
             if app.status.calculation_implemented and app.id not in produced:
                 errors.append(f"application {app.id} is marked implemented but has no calculations")
@@ -322,6 +353,9 @@ class Measure(StrictModel):
 
     def calculations_for(self, application_id: str) -> list[Calculation]:
         return [c for c in self.calculations if application_id in c.applications]
+
+    def warnings_for(self, application_id: str) -> list[WarningRule]:
+        return [w for w in self.warnings if application_id in w.applications]
 
 
 class ManifestEntry(StrictModel):
