@@ -63,6 +63,12 @@ in the form, and press **Calculate**.
   marks outputs that depend on an implementation interpretation, with the note
   below. Outputs that don't apply (for example, electric savings for a gas
   water heater) are listed, and calculation warnings appear under the cards.
+- **Show calculation:** each output has a collapsed section showing the result,
+  the documented equation, the documented formulas of any derived values, and
+  every value the calculation used, with its origin and TRM citation. It also
+  shows interpretation notes and links to related validation issues. The
+  equation is the measure's documentation of the methodology, not an
+  expression the engine executes, so values are never substituted into it.
 - **Details:** collapsed sections hold the output details (source, issues) and
   the full-precision record of where every value came from.
 - **Validation issues:** a collapsed section links each related issue to the
@@ -227,6 +233,34 @@ for v in input_variables("de-res-water-heating-low-flow-shower-head", "direct_in
 # people_per_household people default 2.53
 ```
 
+To see how each output was obtained, use `explain()`. It uses only the
+measure's metadata and the values resolved during the calculation, and
+recalculates nothing:
+
+```python
+from trm_engine import explain
+
+result = calculate(
+    "de-res-water-heating-low-flow-shower-head",
+    "direct_install",
+    {"water_heater_fuel": "electric", "gpm_low": 2.0},
+)
+e = explain(result)[0]
+print(e.name, e.value, e.unit)
+print(e.documented_equation[:60] + "…")
+for v in e.variables[:3]:
+    print("  " * v.depth + f"{v.symbol or v.name} = {v.value} ({v.origin.value})")
+# Annual electric savings 181.95645808909725 kWh/year
+# ΔkWh = ((GPMbase − GPMlow) × TimeShower × # people × Showers…
+# Annual water saved = 1662.2099999999996 (derived)
+#   GPMbase = 2.5 (trm_default)
+#   GPMlow = 2.0 (user_input)
+```
+
+`documented_equation` is documentation (`equation_note` says so). When one
+calculation produces several outputs, as with ASHP cooling, heating and total
+kWh, the explanation lists the values for the whole calculation.
+
 To browse measures:
 
 ```python
@@ -261,7 +295,7 @@ docs/validation_register.md     TRM issues needing expert review
 handling, and imports no UI or web framework. `trm_ui` handles presentation only
 and uses just the engine's public interface (`trm_engine` and
 `trm_engine.models`). Tests enforce both boundaries. A future HTTP API can call
-the same public functions (`calculate`, `input_variables`, `default_registry`)
+the same public functions (`calculate`, `explain`, `input_variables`, `default_registry`)
 without changes to the engine.
 
 Equations in YAML (`equation_display`) are documentation only and are never
