@@ -19,8 +19,14 @@ dev = ["pytest>=8"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/trm_engine"]
 
+# The authoritative reference data lives at the repository root (trm/), as
+# specified in docs/architecture.md section 3. It is copied into the wheel so an
+# installed package can locate its YAML definitions without a repository checkout.
+[tool.hatch.build.targets.wheel.force-include]
+"trm" = "trm_engine/data/trm"
+
 [tool.hatch.build.targets.sdist]
-include = ["src/trm_engine", "tests", "README.md"]
+include = ["src/trm_engine", "trm", "tests", "README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
