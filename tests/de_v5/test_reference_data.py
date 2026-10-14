@@ -16,7 +16,7 @@ def all_measures():
 
 def test_manifest_lists_implemented_measures():
     ids = {e.id for e in default_registry().entries()}
-    assert ids == {"de-res-hvac-air-source-heat-pump"}
+    assert ids == {"de-res-hvac-air-source-heat-pump", "de-res-water-heating-low-flow-shower-head"}
 
 
 @pytest.mark.parametrize("measure", all_measures(), ids=lambda m: m.id)

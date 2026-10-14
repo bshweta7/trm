@@ -10,3 +10,9 @@ measures:
     category: hvac
     name: Air Source Heat Pump
     file: residential/hvac/air_source_heat_pump.yaml
+
+  - id: de-res-water-heating-low-flow-shower-head
+    sector: residential
+    category: water_heating
+    name: Low Flow Shower Head
+    file: residential/water_heating/low_flow_shower_head.yaml
