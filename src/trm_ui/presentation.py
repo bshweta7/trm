@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 from urllib.parse import urlencode
 
-from trm_engine import CalculationResult, ValueOrigin
+from trm_engine import CalculationResult, OutputExplanation, ValueOrigin
 from trm_engine.models import Application, Citation, Measure, Variable, VariableType
 
 REPOSITORY_URL = "https://github.com/bshweta7/trm"
@@ -361,3 +361,52 @@ def bug_report_url(measure: Measure | None = None, application: Application | No
         "What happened?\n\n\nWhat did you expect?\n"
     )
     return f"{REPOSITORY_URL}/issues/new?" + urlencode({"title": title, "body": body})
+
+
+# --- Calculation explanations (from trm_engine.explain) ------------------------
+
+
+def format_precise(value: float | str) -> str:
+    """Up to 10 significant figures, for showing the values a calculation used."""
+    return value if isinstance(value, str) else f"{value:.10g}"
+
+
+def explanation_rows(explanation: OutputExplanation) -> list[dict[str, str]]:
+    """The values a calculation used; inputs to derived values are indented with ↳."""
+    rows = []
+    for v in explanation.variables:
+        source = format_citation(v.citation)
+        if v.lookup:
+            source = f"{v.lookup} ({source})" if source else v.lookup
+        rows.append(
+            {
+                "Symbol": v.symbol or "",
+                "Name": "↳ " * v.depth + v.name,
+                "Value": format_precise(v.value),
+                "Unit": v.unit or "",
+                "Origin": ORIGIN_LABELS[v.origin],
+                "Source": source,
+                "Issues": ", ".join(v.issues),
+            }
+        )
+    return rows
+
+
+def derived_formulas(explanation: OutputExplanation) -> list[str]:
+    """Documented formulas of derived values, e.g. ``Hours = TimeShower × ...``."""
+    return [
+        f"{v.symbol or v.name} = {v.documented_formula}"
+        for v in explanation.variables
+        if v.documented_formula
+    ]
+
+
+def shared_calculation_note(explanation: OutputExplanation, measure: Measure) -> str | None:
+    """Explain that a documented equation and value list cover several outputs."""
+    others = [measure.output(o).name for o in explanation.calculation_outputs if o != explanation.output_id]
+    if not others:
+        return None
+    return (
+        f"This equation documents the calculation “{explanation.calculation_name}”, which also produces: "
+        f"{', '.join(others)}. The table lists the values used by the whole calculation."
+    )

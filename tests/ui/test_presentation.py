@@ -5,7 +5,7 @@ import pytest
 from trm_engine import calculate, default_registry, input_variables
 from urllib.parse import parse_qs, urlparse
 
-from trm_engine import InputValidationError
+from trm_engine import InputValidationError, explain
 from trm_ui.presentation import (
     REQUIRED_MESSAGE,
     VALIDATION_REGISTER_URL,
@@ -14,8 +14,11 @@ from trm_ui.presentation import (
     bug_report_url,
     collect_inputs,
     current_failure,
+    derived_formulas,
+    explanation_rows,
     form_fields,
     format_citation,
+    format_precise,
     format_value,
     group_fields,
     interpretation_notes,
@@ -27,6 +30,7 @@ from trm_ui.presentation import (
     provenance_rows,
     related_issue_ids,
     result_status,
+    shared_calculation_note,
     status_notice,
     validation_messages,
     warning_items,
@@ -280,3 +284,51 @@ def test_bug_report_url_prefills_context_but_no_inputs():
     assert "Measure: de-res-water-heating-low-flow-shower-head" in query["body"][0]
     assert "TRM: DE 5.0 (draft)" in query["body"][0]
     assert bug_report_url() == "https://github.com/bshweta7/trm/issues/new"
+
+
+# --- Calculation explanations ---------------------------------------------------
+
+
+def shower_kwh_explanation():
+    result = calculate(SHOWER, "direct_install", {"water_heater_fuel": "electric", "gpm_low": 2.0})
+    return next(e for e in explain(result) if e.output_id == "kwh_savings")
+
+
+@pytest.mark.parametrize(("value", "text"), [(181.95645808909730, "181.9564581"), (719.0, "719"), ("electric", "electric")])
+def test_format_precise(value, text):
+    assert format_precise(value) == text
+
+
+def test_explanation_rows_indent_derived_inputs_and_show_provenance():
+    rows = explanation_rows(shower_kwh_explanation())
+    names = [r["Name"] for r in rows]
+    assert names[:3] == ["Annual water saved", "↳ Baseline flow rate", "↳ Low flow rate"]
+    by_name = {r["Name"].removeprefix("↳ "): r for r in rows}
+    assert by_name["Baseline flow rate"]["Origin"] == "TRM default"
+    assert by_name["Baseline flow rate"]["Source"].startswith("p. 174; footnote 460")
+    assert by_name["Shower water temperature"] == {
+        "Symbol": "TEMPsh",
+        "Name": "Shower water temperature",
+        "Value": "105",
+        "Unit": "°F",
+        "Origin": "Deemed (TRM)",
+        "Source": "p. 175; No source footnote given",
+        "Issues": "VR-015, VR-018",
+    }
+
+
+def test_derived_formulas_are_documented_text():
+    assert derived_formulas(shower_kwh_explanation()) == [
+        "Annual water saved = (GPMbase − GPMlow) × TimeShower × # people × ShowersPerson × days/year / ShowerHeads/home",
+        "Hours = TimeShower × # people × ShowersPerson / 60 × days/year",
+    ]
+
+
+def test_shared_calculation_note():
+    m = measure(ASHP)
+    explanations = {e.output_id: e for e in explain(calculate(ASHP, "time_of_sale", ASHP_INPUTS))}
+    note = shared_calculation_note(explanations["kwh_savings"], m)
+    assert "also produces: Annual cooling electric savings, Annual heating electric savings" in note
+    water = next(e for e in explain(calculate(SHOWER, "direct_install", {"water_heater_fuel": "electric", "gpm_low": 2.0}))
+                 if e.output_id == "water_savings_ccf")
+    assert "Electric savings from water reduction" in shared_calculation_note(water, measure(SHOWER))

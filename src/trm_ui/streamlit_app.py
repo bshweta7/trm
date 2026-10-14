@@ -18,8 +18,10 @@ from trm_engine import (
     ApplicationNotImplementedError,
     CalculationResult,
     InputValidationError,
+    OutputExplanation,
     calculate,
     default_registry,
+    explain,
     input_variables,
 )
 from trm_engine.models import Measure
@@ -63,6 +65,35 @@ def render_form(fields: list[p.FormField], key_prefix: str) -> dict[str, Any]:
     return raw
 
 
+def render_explanation(explanation: OutputExplanation, measure: Measure) -> None:
+    st.markdown(f"**Result:** {p.format_precise(explanation.value)} {explanation.unit}")
+
+    st.markdown("**Documented equation**")
+    st.code(explanation.documented_equation, language=None, wrap_lines=True)
+    st.caption(explanation.equation_note)
+    note = p.shared_calculation_note(explanation, measure)
+    if note:
+        st.caption(note)
+    if explanation.equation_as_printed:
+        st.markdown("**Equation as printed in the TRM**")
+        st.code(explanation.equation_as_printed, language=None, wrap_lines=True)
+    if explanation.interpretation:
+        st.info(f"**Implementation interpretation:** {explanation.interpretation}")
+
+    formulas = p.derived_formulas(explanation)
+    if formulas:
+        st.markdown("**Derived values** (documented formulas)")
+        st.code("\n".join(formulas), language=None, wrap_lines=True)
+
+    st.markdown("**Values used**")
+    st.dataframe(p.explanation_rows(explanation), hide_index=True)
+    if explanation.all_issues:
+        st.markdown(
+            "**Validation issues:** "
+            + " · ".join(f"[{issue_id}]({url})" for issue_id, url in p.issue_links(explanation.all_issues))
+        )
+
+
 def render_result(result: CalculationResult, measure: Measure, *, previous: bool) -> None:
     st.subheader("Previous result" if previous else "Savings")
     metrics = p.output_metrics(result)
@@ -78,6 +109,10 @@ def render_result(result: CalculationResult, measure: Measure, *, previous: bool
     for w in p.warning_items(result):
         checked = f" Checked: {w['checked']}." if w["checked"] else ""
         st.warning(f"**{w['code']}**: {w['message']}{checked} (Issues: {w['issues']})")
+
+    for explanation in explain(result):
+        with st.expander(f"Show calculation: {explanation.name}"):
+            render_explanation(explanation, measure)
 
     with st.expander("Output details"):
         st.dataframe(p.output_rows(result), hide_index=True)
