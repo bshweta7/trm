@@ -4,4 +4,9 @@
 jurisdiction: DE
 version: "5.0"
 
-measures: []
+measures:
+  - id: de-res-hvac-air-source-heat-pump
+    sector: residential
+    category: hvac
+    name: Air Source Heat Pump
+    file: residential/hvac/air_source_heat_pump.yaml

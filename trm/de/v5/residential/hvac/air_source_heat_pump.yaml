@@ -1,0 +1,348 @@
+# Delaware TRM v5 (draft) — Split System Air Source Heat Pump, pp. 71–81.
+# Issue IDs (VR-###) refer to docs/validation_register.md.
+# Only the Time of Sale application is extracted and implemented in this file.
+
+id: de-res-hvac-air-source-heat-pump
+
+jurisdiction: DE
+trm_version: "5.0"
+
+classification:
+  market_sector: residential
+  category: hvac
+  name: Air Source Heat Pump
+
+trm_identifiers:
+  measure_codes: [RS_HV_TOS_ASHP_0518, RS_HV_EREP_ASHP_0518]
+  section: Split System Air Source Heat Pump
+
+effective_date: "2018-05"
+end_date: null
+
+source:
+  document: Delaware Technical Reference Manual
+  version: "5.0"
+  status: draft
+  url: https://documents.dnrec.delaware.gov/energy/eeac/emv/meetings/2025/0408/Draft-Technical-Reference-Manual.pdf
+  page_start: 71
+  page_end: 81
+  section: Residential Market Sector / HVAC End Use / Split System Air Source Heat Pump
+
+description: >
+  Installation of a new Air Source Heat Pump split system meeting ENERGY STAR
+  efficiency standards, either at time of sale (end of life or new home) or as
+  early replacement of a functioning existing heat pump system.
+
+issues: [VR-014, VR-025]
+
+applications:
+  - id: time_of_sale
+    name: Time of Sale
+    measure_code: RS_HV_TOS_ASHP_0518
+    description: >
+      Installation of a new ENERGY STAR Air Source Heat Pump replacing an
+      existing unit at the end of its useful life, or installed in a new home.
+    baseline:
+      type: code_standard
+      description: Air Source Heat Pump split system meeting the minimum Federal standard.
+    status:
+      metadata_extracted: true
+      variables_extracted: true
+      equations_extracted: true
+      calculation_implemented: true
+      automated_tests: true
+      human_reviewed: false
+    source: {pages: [72, 73]}
+    issues: [VR-003, VR-005, VR-008]
+
+  - id: early_replacement
+    name: Early Replacement
+    measure_code: RS_HV_EREP_ASHP_0518
+    description: >
+      Early removal of a functioning existing heat pump system before the end
+      of its life. Dual baseline: existing equipment for the remaining life,
+      then new baseline equipment for the remainder of the measure life.
+      Not extracted or implemented in this version of the data.
+    baseline:
+      type: existing_equipment
+      description: Existing equipment efficiency, then new baseline of the same equipment type.
+    status:
+      metadata_extracted: true
+      variables_extracted: false
+      equations_extracted: false
+      calculation_implemented: false
+      automated_tests: false
+      human_reviewed: false
+    source: {pages: [72, 73, 74]}
+    issues: [VR-010, VR-011, VR-012]
+
+variables:
+  - id: location
+    name: Location
+    description: Weather location used to select full-load hours.
+    type: choice
+    choices:
+      - {id: wilmington_de, name: "Wilmington, DE"}
+      - {id: baltimore_md, name: "Baltimore, MD"}
+      - {id: washington_dc, name: "Washington, DC"}
+    source: user_input
+    required: true
+    citation: {pages: [74, 76]}
+    issues: [VR-013]
+
+  - id: cooling_capacity_existing
+    symbol: BTUHCexist
+    name: Existing cooling capacity
+    description: >
+      Cooling capacity of the existing Air Source Heat Pump (tons x 12,000 Btu/hr).
+      Also the baseline capacity in the Time of Sale equation.
+    unit: Btu/hr
+    source: user_input
+    required: true
+    exclusive_minimum: 0
+    citation: {page: 74}
+    issues: [VR-005]
+
+  - id: cooling_capacity_efficient
+    symbol: BTUHCee
+    name: Efficient cooling capacity
+    description: Cooling capacity of the new, efficient Air Source Heat Pump (tons x 12,000 Btu/hr).
+    unit: Btu/hr
+    source: user_input
+    required: true
+    exclusive_minimum: 0
+    citation: {page: 75}
+
+  - id: heating_capacity_existing
+    symbol: BTUHHexist
+    name: Existing heating capacity
+    description: >
+      Heating capacity of the existing Air Source Heat Pump (tons x 12,000 Btu/hr).
+      Also the baseline capacity in the Time of Sale equation.
+    unit: Btu/hr
+    source: user_input
+    required: true
+    exclusive_minimum: 0
+    citation: {page: 76}
+    issues: [VR-005, VR-009]
+
+  - id: heating_capacity_efficient
+    symbol: BTUHHee
+    name: Efficient heating capacity
+    description: Heating capacity of the new, efficient Air Source Heat Pump (tons x 12,000 Btu/hr).
+    unit: Btu/hr
+    source: user_input
+    required: true
+    exclusive_minimum: 0
+    citation: {page: 76}
+    issues: [VR-009]
+
+  - id: seer_efficient
+    symbol: SEERee
+    name: Efficient SEER
+    description: Seasonal Energy Efficiency Ratio of the efficient Air Source Heat Pump (SEER basis).
+    unit: kBtu/kWh
+    source: user_input
+    required: true
+    exclusive_minimum: 0
+    citation: {page: 75}
+    issues: [VR-004, VR-008]
+
+  - id: hspf_efficient
+    symbol: HSPFee
+    name: Efficient HSPF
+    description: Heating Seasonal Performance Factor of the efficient Air Source Heat Pump (HSPF basis).
+    unit: kBtu/kWh
+    source: user_input
+    required: true
+    exclusive_minimum: 0
+    citation: {page: 77}
+    issues: [VR-004, VR-008]
+
+  - id: eer_efficient
+    symbol: EERee
+    name: Efficient EER
+    description: Energy Efficiency Ratio of the efficient Air Source Heat Pump (EER basis).
+    unit: kBtu/hr per kW
+    source: user_input
+    required: true
+    exclusive_minimum: 0
+    citation: {page: 79}
+    issues: [VR-004, VR-008]
+
+  - id: seer_baseline
+    symbol: SEERbase
+    name: Baseline SEER
+    description: Seasonal Energy Efficiency Ratio of the baseline Air Source Heat Pump.
+    unit: kBtu/kWh
+    source: deemed
+    value: 15
+    citation: {page: 75, footnote: 195, note: "Minimum federal standard (seer2.com, southeast region)"}
+    issues: [VR-003, VR-004]
+
+  - id: hspf_baseline
+    symbol: HSPFbase
+    name: Baseline HSPF
+    description: Heating Seasonal Performance Factor of the baseline Air Source Heat Pump.
+    unit: kBtu/kWh
+    source: deemed
+    value: 8.8
+    citation: {page: 76, footnote: 200, note: Minimum Federal Standard}
+    issues: [VR-003, VR-004]
+
+  - id: eer_baseline
+    symbol: EERbase
+    name: Baseline EER
+    description: >
+      Energy Efficiency Ratio of the baseline Air Source Heat Pump, approximated
+      from SEER 15 by the TRM as (-0.02 x SEER^2) + (1.12 x SEER).
+    unit: kBtu/hr per kW
+    source: deemed
+    value: 12.3
+    citation: {page: 78, footnote: 203}
+    issues: [VR-003, VR-004, VR-011]
+
+  - id: cooling_full_load_hours
+    symbol: EFLHcool
+    name: Cooling full-load hours
+    unit: hours/year
+    source: lookup
+    lookup: cooling_full_load_hours_by_location
+    lookup_key: location
+
+  - id: heating_full_load_hours
+    symbol: FLHheat
+    name: Heating full-load hours
+    unit: hours/year
+    source: lookup
+    lookup: heating_full_load_hours_by_location
+    lookup_key: location
+
+  - id: coincidence_factor_ssp
+    symbol: CFSSP
+    name: Summer system peak coincidence factor
+    description: Summer System Peak Coincidence Factor for Central A/C (hour ending 5pm on hottest summer weekday).
+    source: deemed
+    value: 0.69
+    citation: {page: 79, footnote: 206}
+    issues: [VR-006]
+
+  - id: coincidence_factor_pjm
+    symbol: CFPJM
+    name: PJM summer peak coincidence factor
+    description: >
+      PJM Summer Peak Coincidence Factor for Central A/C (June to August weekdays
+      between 2 pm and 6 pm) valued at peak weather.
+    source: deemed
+    value: 0.66
+    citation: {page: 79, footnote: 207}
+    issues: [VR-006]
+
+lookups:
+  cooling_full_load_hours_by_location:
+    description: Full Load Cooling Hours by location
+    unit: hours/year
+    source: {page: 74, footnote: 193, note: "Wilmington and DC scaled from Baltimore (744) by ENERGY STAR calculator ratios"}
+    values:
+      wilmington_de: 719
+      baltimore_md: 744
+      washington_dc: 935
+
+  heating_full_load_hours_by_location:
+    description: Full Load Heating Hours by location
+    unit: hours/year
+    source: {page: 76, footnote: 198, note: "Wilmington and DC scaled from Baltimore (866) by ENERGY STAR calculator ratios"}
+    values:
+      wilmington_de: 935
+      baltimore_md: 866
+      washington_dc: 822
+    issues: [VR-007]
+
+outputs:
+  - id: kwh_cooling_savings
+    name: Annual cooling electric savings
+    unit: kWh/year
+  - id: kwh_heating_savings
+    name: Annual heating electric savings
+    unit: kWh/year
+  - id: kwh_savings
+    name: Annual electric savings
+    unit: kWh/year
+    description: Sum of heating and cooling savings.
+  - id: kw_ssp_savings
+    name: Summer system peak demand savings
+    unit: kW
+    description: Primary peak definition (TRM p. 9).
+  - id: kw_pjm_savings
+    name: PJM summer peak demand savings
+    unit: kW
+    description: Secondary peak definition used for PJM RPM bidding (TRM p. 9).
+
+calculations:
+  - id: time_of_sale_energy_savings
+    name: Time of Sale annual energy savings
+    applications: [time_of_sale]
+    outputs: [kwh_cooling_savings, kwh_heating_savings, kwh_savings]
+    variables:
+      - cooling_capacity_existing
+      - cooling_capacity_efficient
+      - heating_capacity_existing
+      - heating_capacity_efficient
+      - seer_baseline
+      - seer_efficient
+      - hspf_baseline
+      - hspf_efficient
+      - cooling_full_load_hours
+      - heating_full_load_hours
+    equation_display: >
+      ΔkWh = EFLHcool × ((BTUHCexist / SEERbase) − (BTUHCee / SEERee)) / 1000
+      + EFLHheat × ((BTUHHexist / HSPFbase) − (BTUHHee / HSPFee)) / 1000
+    implementation:
+      function: time_of_sale_energy_savings
+    source: {page: 73, section: Annual Energy Savings Algorithm}
+    issues: [VR-002, VR-004]
+
+  - id: time_of_sale_peak_demand_savings
+    name: Time of Sale summer coincident peak demand savings
+    applications: [time_of_sale]
+    outputs: [kw_ssp_savings, kw_pjm_savings]
+    variables:
+      - cooling_capacity_existing
+      - cooling_capacity_efficient
+      - eer_baseline
+      - eer_efficient
+      - coincidence_factor_ssp
+      - coincidence_factor_pjm
+    equation_display: >
+      ΔkW = ((BTUHCexist × 1/EERbase) − (BTUHCee × 1/EERee)) / 1000 × CF
+    equation_as_printed: >
+      ΔkW = ((BTUHCexist × 1/EERbase) − (BTUHCee × 1/EERee)) / (1000 × CF)
+    interpretation: >-
+      Implementation multiplies by CF, as all three worked examples on pp. 79–80 do,
+      instead of dividing as printed on p. 78. This is an interpretation that
+      needs expert verification, not an authoritative correction of the TRM.
+    implementation:
+      function: time_of_sale_peak_demand_savings
+    source: {pages: [78, 79, 80], section: Summer Coincident Peak kW Savings Algorithm}
+    issues: [VR-001, VR-006]
+
+measure_life:
+  value: 18
+  unit: years
+  source: {page: 81, footnote: 209}
+
+# Measure-level status covers every application. Early Replacement is not yet
+# extracted, so variables/equations/calculation are false at this level; see
+# applications[].status for Time of Sale.
+status:
+  metadata_extracted: true
+  variables_extracted: false
+  equations_extracted: false
+  calculation_implemented: false
+  automated_tests: false
+  human_reviewed: false
+
+review:
+  reviewed_by: null
+  reviewed_date: null
+  notes: []

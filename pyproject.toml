@@ -30,3 +30,6 @@ include = ["src/trm_engine", "trm", "tests", "README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "trm_issue(*ids): links a test to issues in docs/validation_register.md",
+]
