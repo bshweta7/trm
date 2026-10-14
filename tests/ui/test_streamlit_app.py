@@ -205,3 +205,52 @@ def test_unexpected_error_is_logged_not_shown(monkeypatch, caplog):
     assert "internal detail" not in errors and "RuntimeError" not in errors
     assert not at.metric
     assert "internal detail" in caplog.text  # logged for the operator
+
+
+
+# --- Show calculation ---------------------------------------------------------------
+
+
+def calculation_expanders(at):
+    return {e.label.removeprefix("Show calculation: "): e for e in at.expander if e.label.startswith("Show calculation: ")}
+
+
+def test_one_collapsed_show_calculation_per_output_and_cards_unchanged():
+    at = submit(start(), ASHP, "time_of_sale", ASHP_INPUTS)
+    expanders = calculation_expanders(at)
+    assert list(expanders) == [label.removesuffix(" †") for label in metrics(at)]
+    assert all(e.proto.expanded is False for e in expanders.values())
+    assert metrics(at)["Annual electric savings"] == "192.8 kWh/year"
+
+
+def test_show_calculation_contents_are_documentation_not_substitution():
+    at = submit(start(), ASHP, "time_of_sale", ASHP_INPUTS)
+    kw = calculation_expanders(at)["Summer system peak demand savings"]
+    assert kw.markdown[0].value == "**Result:** 0.1087429644 kW"
+    assert [c.value for c in kw.code] == [
+        "ΔkW = ((BTUHCexist × 1/EERbase) − (BTUHCee × 1/EERee)) / 1000 × CF",
+        "ΔkW = ((BTUHCexist × 1/EERbase) − (BTUHCee × 1/EERee)) / (1000 × CF)",
+    ]
+    assert "not executed or independently verified" in text(kw.caption)
+    assert "multiplies by CF" in text(kw.info)
+    values = kw.dataframe[0].value
+    assert dict(zip(values["Symbol"], values["Value"]))["EERbase"] == "12.3"
+    assert "VR-001" in text(kw.markdown)
+    # No equation with values substituted in is displayed.
+    assert not any("36000" in c.value or "12.3" in c.value for c in kw.code)
+
+
+def test_show_calculation_lists_derived_values_for_shower():
+    at = submit(start(SHOWER), SHOWER, "direct_install", {"water_heater_fuel": "electric", "gpm_low": 2.0})
+    kwh = calculation_expanders(at)["Annual electric savings"]
+    assert "Hours = TimeShower × # people × ShowersPerson / 60 × days/year" in text(kwh.code)
+    names = list(kwh.dataframe[0].value["Name"])
+    assert names[0] == "Annual water saved" and names[1] == "↳ Baseline flow rate"
+    assert "also produces: Summer peak demand savings" in text(kwh.caption)
+
+
+def test_previous_result_also_has_show_calculation():
+    at = submit(start(SHOWER), SHOWER, "direct_install", {"water_heater_fuel": "electric", "gpm_low": 2.0})
+    submit(at, SHOWER, "direct_install", {"gpm_low": 2.5})
+    assert at.subheader[0].value == "Previous result"
+    assert "Annual electric savings" in calculation_expanders(at)
