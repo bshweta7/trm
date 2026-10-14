@@ -41,6 +41,33 @@ To check this, run `TRM_TEST_WHEEL=1 pytest -k wheel`. It builds a wheel,
 installs it into a fresh virtual environment and calculates from outside the
 repository, so it needs network access.
 
+## Continuous integration
+
+GitHub Actions ([.github/workflows/tests.yml](.github/workflows/tests.yml))
+runs on every pull request into `dev` or `main` and on every push to those
+branches. It has two jobs:
+
+- **pytest:** the full test suite, with warnings treated as errors, on Ubuntu
+  with Python 3.11 and 3.12.
+- **Wheel install smoke test:** builds a wheel, installs it into a fresh
+  virtual environment, and loads every measure from outside the repository.
+  It runs once, on Python 3.12.
+
+A new push to a pull request cancels that pull request's earlier runs. The
+workflow can only read the repository.
+
+To run the same checks locally:
+
+```bash
+pip install -e '.[dev]'
+python -m pytest -W error                      # pytest job
+TRM_TEST_WHEEL=1 python -m pytest -W error \
+  tests/test_registry.py::test_installed_wheel_finds_reference_data   # wheel job (needs network)
+```
+
+Use an editable install (`-e`). One test checks that a source checkout reads
+the repository's `trm/` data, and it fails against a regular install.
+
 ## Usage
 
 ```python
