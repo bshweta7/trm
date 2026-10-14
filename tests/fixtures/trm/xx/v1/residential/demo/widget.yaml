@@ -1,0 +1,154 @@
+# Synthetic measure used only to test the engine. Every value here is made up
+# and is not taken from any TRM. It exercises each feature of the schema:
+# required and optional inputs, deemed values, a lookup, a derived value,
+# fuel-conditional calculations, an interpretation, and an unimplemented
+# application.
+
+id: xx-res-demo-widget
+
+jurisdiction: XX
+trm_version: "1.0"
+
+classification:
+  market_sector: residential
+  category: demo
+  name: Demo Widget
+
+trm_identifiers:
+  measure_codes: [DEMO_TOS, DEMO_RF]
+
+effective_date: "2020-01"
+end_date: null
+
+source:
+  document: Demo TRM (test fixture)
+  version: "1.0"
+  status: fixture
+  url: https://example.invalid/demo-trm.pdf
+  page_start: 1
+  page_end: 2
+
+description: Synthetic measure for engine tests.
+
+applications:
+  - id: time_of_sale
+    name: Time of Sale
+    measure_code: DEMO_TOS
+    baseline: {type: code_standard, description: Standard widget.}
+    status:
+      metadata_extracted: true
+      variables_extracted: true
+      equations_extracted: true
+      calculation_implemented: true
+      automated_tests: true
+      human_reviewed: false
+    source: {page: 1}
+
+  - id: retrofit
+    name: Retrofit
+    measure_code: DEMO_RF
+    baseline: {type: existing_equipment, description: Existing widget.}
+    status:
+      metadata_extracted: true
+      variables_extracted: false
+      equations_extracted: false
+      calculation_implemented: false
+      automated_tests: false
+      human_reviewed: false
+    source: {page: 2}
+
+variables:
+  - id: fuel
+    name: Fuel
+    type: choice
+    choices:
+      - {id: electric, name: Electric}
+      - {id: gas, name: Gas}
+    source: user_input
+    required: true
+
+  - id: zone
+    name: Zone
+    type: choice
+    choices:
+      - {id: north, name: North}
+      - {id: south, name: South}
+    source: user_input
+    required: true
+
+  - id: quantity
+    name: Quantity
+    unit: widgets
+    source: user_input
+    required: true
+    exclusive_minimum: 0
+    maximum: 10
+
+  - id: hours
+    name: Operating hours
+    unit: hours/year
+    source: user_input
+    default: 1000
+    exclusive_minimum: 0
+    citation: {page: 1, note: Use if actual hours are unknown}
+
+  - id: rate
+    name: Savings rate
+    unit: kW/widget
+    source: deemed
+    value: 0.5
+    citation: {page: 1}
+
+  - id: zone_factor
+    name: Zone factor
+    source: lookup
+    lookup: zone_factors
+    lookup_key: zone
+
+  - id: unit_hours
+    name: Widget-hours
+    unit: widget-hours/year
+    source: derived
+    function: unit_hours
+    variables: [quantity, hours]
+
+lookups:
+  zone_factors:
+    description: Zone adjustment
+    values: {north: 1.2, south: 0.8}
+    source: {page: 2, table: Zone factors}
+
+outputs:
+  - {id: kwh_savings, name: Electric savings, unit: kWh/year}
+  - {id: therm_savings, name: Gas savings, unit: therms/year}
+
+calculations:
+  - id: electric
+    name: Electric savings
+    applications: [time_of_sale]
+    applies_when: {fuel: electric}
+    outputs: [kwh_savings]
+    variables: [unit_hours, rate, zone_factor]
+    equation_display: kWh = widget-hours × rate × zone factor
+    implementation: {function: electric}
+    source: {page: 1}
+
+  - id: gas
+    name: Gas savings
+    applications: [time_of_sale]
+    applies_when: {fuel: gas}
+    outputs: [therm_savings]
+    variables: [unit_hours, rate]
+    equation_display: therms = widget-hours × rate / 100
+    interpretation: Divisor assumed to be 100.
+    implementation: {function: gas}
+    source: {page: 1}
+    issues: [VR-000]
+
+status:
+  metadata_extracted: true
+  variables_extracted: false
+  equations_extracted: false
+  calculation_implemented: false
+  automated_tests: false
+  human_reviewed: false

@@ -1,0 +1,11 @@
+# Synthetic TRM used only by engine tests. Not real reference data.
+
+jurisdiction: XX
+version: "1.0"
+
+measures:
+  - id: xx-res-demo-widget
+    sector: residential
+    category: demo
+    name: Demo Widget
+    file: residential/demo/widget.yaml
