@@ -15,9 +15,17 @@ from trm_engine.models import Measure, Variable, VariableSource, VariableType
 
 
 class InputValidationError(ValueError):
-    def __init__(self, errors: list[str]):
-        self.errors = errors
-        super().__init__("invalid inputs: " + "; ".join(errors))
+    """Inputs failed validation. No result is produced.
+
+    ``details`` lists one ``{"field": ..., "message": ...}`` dict per problem,
+    for callers that display or serialize errors per field. ``errors`` holds the
+    same information as ``"field: message"`` strings.
+    """
+
+    def __init__(self, details: list[dict[str, str]]):
+        self.details = details
+        self.errors = [f"{d['field']}: {d['message']}" for d in details]
+        super().__init__("invalid inputs: " + "; ".join(self.errors))
 
 
 def user_inputs_for(measure: Measure, application_id: str) -> list[Variable]:
@@ -74,6 +82,6 @@ def validate_inputs(
         validated = model.model_validate(dict(inputs))
     except ValidationError as exc:
         raise InputValidationError(
-            [f"{'.'.join(map(str, e['loc'])) or '<root>'}: {e['msg']}" for e in exc.errors()]
+            [{"field": ".".join(map(str, e["loc"])) or "<root>", "message": e["msg"]} for e in exc.errors()]
         ) from None
     return {k: v for k, v in validated.model_dump(exclude_unset=True).items() if v is not None}

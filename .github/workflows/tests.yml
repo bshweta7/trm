@@ -36,11 +36,12 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       # Editable install: the tests check that a source checkout loads the
-      # repository's trm/ reference data.
-      - name: Install project and dev dependencies
+      # repository's trm/ reference data. The ui extra lets the Streamlit
+      # tests run instead of being skipped.
+      - name: Install project, dev and UI dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e '.[dev]'
+          python -m pip install -e '.[dev,ui]'
 
       - name: Run tests
         run: python -m pytest -W error

@@ -15,9 +15,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+ui = ["streamlit>=1.50"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/trm_engine"]
+packages = ["src/trm_engine", "src/trm_ui"]
 
 # The authoritative reference data lives at the repository root (trm/), as
 # specified in docs/architecture.md section 3. It is copied into the wheel so an
@@ -26,7 +27,7 @@ packages = ["src/trm_engine"]
 "trm" = "trm_engine/data/trm"
 
 [tool.hatch.build.targets.sdist]
-include = ["src/trm_engine", "trm", "tests", "docs", "README.md"]
+include = ["src/trm_engine", "src/trm_ui", "trm", "tests", "docs", "README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

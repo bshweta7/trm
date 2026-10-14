@@ -8,7 +8,7 @@ see VR-015 and VR-016 in docs/validation_register.md.
 
 import pytest
 
-from trm_engine import InputValidationError, calculate
+from trm_engine import InputValidationError, calculate, input_variables
 from trm_engine.measures.de_v5.low_flow_shower_head import (
     electric_savings,
     fossil_fuel_savings,
@@ -175,6 +175,17 @@ def test_published_hours():
 
 
 # --- Defaults, provenance, and validation -------------------------------------
+
+
+@pytest.mark.parametrize("application", ["direct_install", "time_of_sale"])
+def test_input_variables(application):
+    variables = input_variables(MEASURE, application)
+    assert [(v.id, v.required, v.default) for v in variables] == [
+        ("water_heater_fuel", True, None),
+        ("gpm_base", False, 2.5),
+        ("gpm_low", True, None),
+        ("people_per_household", False, 2.53),
+    ]
 
 
 def test_defaults_are_reported_with_provenance():

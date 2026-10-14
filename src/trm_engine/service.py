@@ -11,9 +11,9 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from trm_engine.inputs import validate_inputs
+from trm_engine.inputs import user_inputs_for, validate_inputs
 from trm_engine.measures import IMPLEMENTATIONS
-from trm_engine.models import Citation, Measure, SourceDocument, Status, VariableSource
+from trm_engine.models import Citation, Measure, SourceDocument, Status, Variable, VariableSource
 from trm_engine.registry import MeasureRegistry, default_registry
 
 
@@ -144,6 +144,24 @@ class _Resolver:
         )
         self._in_progress.discard(var_id)
         return self.resolved[var_id]
+
+
+def input_variables(
+    measure_id: str,
+    application: str,
+    registry: MeasureRegistry | None = None,
+) -> list[Variable]:
+    """User inputs accepted by one application of a measure, in definition order.
+
+    Each ``Variable`` gives the label, symbol, unit, type, choices, whether it is
+    required, any TRM default with its citation, numeric bounds, and issue IDs:
+    enough to build an input form or an API schema. Validation itself happens
+    in ``calculate()``.
+    """
+    measure = (registry or default_registry()).get(measure_id)
+    if not measure.application(application).status.calculation_implemented:
+        raise ApplicationNotImplementedError(f"{measure_id}: application {application!r} is not implemented")
+    return user_inputs_for(measure, application)
 
 
 def calculate(
