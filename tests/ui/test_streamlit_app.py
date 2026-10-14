@@ -23,75 +23,113 @@ ASHP_INPUTS = dict(
     hspf_efficient=9,
     eer_efficient=13,
 )
+STALE_NOTICE = "Inputs changed since the last calculation"
+PREVIOUS_NOTICE = "They do not correspond to the inputs you just submitted"
 
 
 def start(measure_id=ASHP, application=None):
     at = AppTest.from_file(str(APP), default_timeout=30).run()
     if measure_id != ASHP:
-        at.sidebar.selectbox(key="measure").set_value(measure_id).run()
+        at.selectbox(key="measure").set_value(measure_id).run()
     if application:
-        at.sidebar.selectbox(key=f"application:{measure_id}").set_value(application).run()
+        at.selectbox(key=f"application:{measure_id}").set_value(application).run()
     assert not at.exception
     return at
 
 
-def submit(at, measure_id, application, inputs):
+def fill(at, measure_id, application, inputs):
     prefix = f"{measure_id}:{application}:"
     for field, value in inputs.items():
         widget = (at.selectbox if isinstance(value, str) else at.number_input)(key=prefix + field)
         widget.set_value(value)
-    at.button[0].click().run()
+    return at
+
+
+def submit(at, measure_id, application, inputs):
+    fill(at, measure_id, application, inputs)
+    at.button(key="calculate").click().run()
     assert not at.exception
     return at
 
 
-def outputs(at):
-    return dict(zip(at.dataframe[0].value["Output"], at.dataframe[0].value["Value"]))
+def metrics(at):
+    return {m.label: m.value for m in at.metric}
 
 
 def text(elements):
     return "\n".join(e.value for e in elements)
 
 
-def test_initial_page_shows_status_and_only_implemented_applications():
+# --- Layout --------------------------------------------------------------------
+
+
+def test_layout_has_no_sidebar_and_one_compact_notice():
     at = start()
+    assert len(at.sidebar.children) == 0
     assert at.title[0].value == "Delaware TRM Calculator"
-    assert at.sidebar.selectbox(key="measure").options == ["Air Source Heat Pump", "Low Flow Shower Head"]
-    assert at.sidebar.selectbox(key=f"application:{ASHP}").options == ["Time of Sale"]
-    assert "Not implemented yet: Early Replacement" in text(at.sidebar.caption)
-    warnings = text(at.warning)
-    assert "**draft** TRM" in warnings
-    assert "Not reviewed by an energy efficiency expert" in warnings
+    assert at.selectbox(key="measure").options == ["Air Source Heat Pump", "Low Flow Shower Head"]
+    assert at.selectbox(key=f"application:{ASHP}").options == ["Time of Sale"]
+    assert "Not implemented yet: Early Replacement" in text(at.caption)
+    assert [w.value for w in at.warning] == [
+        "Based on the **draft** DE TRM 5.0. Calculations have not been independently validated."
+    ]
     assert "DE TRM 5.0" in text(at.caption)
-    assert not at.dataframe  # nothing calculated yet
+    assert not at.metric  # nothing calculated yet
+    assert "Report a bug" in text(at.caption)
 
 
-def test_ashp_results_with_units_interpretation_warning_and_issue_links():
+def test_fields_are_grouped_from_metadata():
+    at = start(SHOWER)
+    headings = [m.value for m in at.markdown if m.value.startswith("**")]
+    assert headings == [
+        "**Selections**",
+        "**Required values**",
+        "**Optional — leave blank to use the TRM default**",
+    ]
+
+
+def test_validation_issues_are_in_a_collapsed_expander():
+    at = start()
+    [issues] = [e for e in at.expander if e.label.startswith("Related validation issues")]
+    assert issues.proto.expanded is False
+    assert "validation_register.md#vr-025" in text(issues.markdown)
+
+
+# --- Results -------------------------------------------------------------------
+
+
+def test_ashp_metrics_interpretation_warning_and_collapsed_details():
     at = submit(start(), ASHP, "time_of_sale", ASHP_INPUTS)
-    assert outputs(at)["Annual electric savings"] == "192.8"
-    assert set(at.dataframe[0].value["Unit"]) == {"kWh/year", "kW"}
-    assert "VR-001" in text(at.info)  # peak kW interpretation
+    values = metrics(at)
+    assert values["Annual electric savings"] == "192.8 kWh/year"
+    assert values["Summer system peak demand savings †"] == "0.1087 kW"
+    assert len(values) == 5
+    assert "VR-001" in text(at.caption)  # † note
     assert "efficient_equipment_eligibility_not_verified" in text(at.warning)
-    provenance = at.dataframe[1].value
-    assert "TRM table lookup" in set(provenance["Origin"])
-    assert "validation_register.md#vr-001" in text(at.markdown)
+    details = {e.label: e for e in at.expander}
+    assert details["Output details"].proto.expanded is False
+    provenance = details["Where every value came from"]
+    assert provenance.proto.expanded is False
+    assert "TRM table lookup" in set(provenance.dataframe[0].value["Origin"])
 
 
 @pytest.mark.parametrize("application", ["direct_install", "time_of_sale"])
 def test_shower_electric_uses_trm_defaults(application):
     at = submit(start(SHOWER, application), SHOWER, application, {"water_heater_fuel": "electric", "gpm_low": 2.0})
-    values = outputs(at)
-    assert values["Annual electric savings"] == "182"
+    values = metrics(at)
+    assert values["Annual electric savings"] == "182 kWh/year"
     assert "Annual fossil fuel savings" not in values
-    origins = dict(zip(at.dataframe[1].value["Name"], at.dataframe[1].value["Origin"]))
-    assert origins["Baseline flow rate"] == "TRM default"
+    provenance = {e.label: e for e in at.expander}["Where every value came from"].dataframe[0].value
+    assert dict(zip(provenance["Name"], provenance["Origin"]))["Baseline flow rate"] == "TRM default"
 
 
-def test_shower_fossil_fuel_omits_electric_outputs():
+def test_shower_fossil_fuel_shows_only_applicable_outputs():
     at = submit(start(SHOWER), SHOWER, "direct_install", {"water_heater_fuel": "fossil_fuel", "gpm_low": 2.0})
-    values = outputs(at)
-    assert values["Annual fossil fuel savings"] == "0.7605"
-    assert "Annual electric savings" not in values
+    assert list(metrics(at)) == [
+        "Annual fossil fuel savings",
+        "Annual water savings",
+        "Electric savings from water reduction",
+    ]
     assert "Not applicable: Annual electric savings, Summer peak demand savings" in text(at.caption)
 
 
@@ -99,14 +137,71 @@ def test_shower_flow_warning():
     at = submit(
         start(SHOWER), SHOWER, "direct_install", {"water_heater_fuel": "electric", "gpm_base": 1.8, "gpm_low": 2.0}
     )
-    assert outputs(at)["Annual electric savings"] == "-72.78"
+    assert metrics(at)["Annual electric savings"] == "-72.78 kWh/year"
     assert "no_positive_water_savings" in text(at.warning)
-    assert "VR-026" in text(at.markdown)
 
 
-def test_validation_errors_are_shown_per_field_without_a_traceback():
+# --- Persistence and freshness ---------------------------------------------------
+
+
+def test_result_survives_reruns():
+    at = submit(start(), ASHP, "time_of_sale", ASHP_INPUTS)
+    at.run()
+    assert metrics(at)["Annual electric savings"] == "192.8 kWh/year"
+
+
+def test_changed_inputs_hide_the_result_until_recalculated():
+    at = submit(start(), ASHP, "time_of_sale", ASHP_INPUTS)
+    fill(at, ASHP, "time_of_sale", {"seer_efficient": 18}).run()
+    assert not at.metric
+    assert STALE_NOTICE in text(at.info)
+    at.button(key="calculate").click().run()
+    assert metrics(at)["Annual electric savings"] != "192.8 kWh/year"
+    assert STALE_NOTICE not in text(at.info)
+
+
+def test_switching_measure_never_shows_the_other_measures_result():
+    at = submit(start(), ASHP, "time_of_sale", ASHP_INPUTS)
+    at.selectbox(key="measure").set_value(SHOWER).run()
+    assert not at.metric
+    assert STALE_NOTICE not in text(at.info)
+
+
+def test_failed_calculation_keeps_previous_result_clearly_labelled():
+    at = submit(start(SHOWER), SHOWER, "direct_install", {"water_heater_fuel": "electric", "gpm_low": 2.0})
+    submit(at, SHOWER, "direct_install", {"gpm_low": 2.5})
+    errors = text(at.error)
+    assert "Could not calculate" in errors
+    assert "Low flow rate (GPMlow) [gal/min]: Input should be less than or equal to 2" in errors
+    assert PREVIOUS_NOTICE in text(at.info)
+    assert at.subheader[0].value == "Previous result"
+    assert metrics(at)["Annual electric savings"] == "182 kWh/year"
+
+    # Editing the inputs again clears the error and hides the previous numbers.
+    fill(at, SHOWER, "direct_install", {"gpm_low": 1.5}).run()
+    assert not at.error and not at.metric
+    assert STALE_NOTICE in text(at.info)
+
+
+def test_failed_first_calculation_shows_friendly_errors_only():
     at = submit(start(SHOWER), SHOWER, "direct_install", {"gpm_low": 2.5})
-    message = text(at.error)
-    assert "Water heater fuel" in message and "Field required" in message
-    assert "Low flow rate" in message and "less than or equal to 2" in message
-    assert not at.dataframe
+    errors = text(at.error)
+    assert "Water heater fuel: This field is required." in errors
+    assert "Traceback" not in errors and "ValidationError" not in errors
+    assert not at.metric
+    assert PREVIOUS_NOTICE not in text(at.info)
+
+
+def test_unexpected_error_is_logged_not_shown(monkeypatch, caplog):
+    import trm_engine
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("internal detail: secret path /srv/x")
+
+    monkeypatch.setattr(trm_engine, "calculate", broken)
+    at = submit(start(SHOWER), SHOWER, "direct_install", {"water_heater_fuel": "electric", "gpm_low": 2.0})
+    errors = text(at.error)
+    assert "Something went wrong while calculating" in errors
+    assert "internal detail" not in errors and "RuntimeError" not in errors
+    assert not at.metric
+    assert "internal detail" in caplog.text  # logged for the operator
