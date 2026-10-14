@@ -15,6 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+ui = ["streamlit>=1.50"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/trm_engine", "src/trm_ui"]
