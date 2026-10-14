@@ -1,0 +1,7 @@
+# Inventory of Delaware TRM v5 measures represented in this repository.
+# Implementation and review status live in each measure file.
+
+jurisdiction: DE
+version: "5.0"
+
+measures: []
