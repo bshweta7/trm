@@ -1,0 +1,360 @@
+# Delaware TRM v5 (draft) — Low Flow Shower Head, pp. 174–178.
+# Issue IDs (VR-###) refer to docs/validation_register.md.
+# Variable values follow the TRM variable definitions, not the illustrative
+# examples, which are inconsistent with them (VR-015, VR-016).
+
+id: de-res-water-heating-low-flow-shower-head
+
+jurisdiction: DE
+trm_version: "5.0"
+
+classification:
+  market_sector: residential
+  category: water_heating
+  name: Low Flow Shower Head
+
+trm_identifiers:
+  measure_codes: [RS_WT_DI_SHWRHD_0519, RS_WT_TOS_SHWRHD_0519]
+  section: Domestic Hot Water (DHW) End Use / Low Flow Shower Head
+
+effective_date: "2019-06"
+end_date: null
+
+source:
+  document: Delaware Technical Reference Manual
+  version: "5.0"
+  status: draft
+  url: https://documents.dnrec.delaware.gov/energy/eeac/emv/meetings/2025/0408/Draft-Technical-Reference-Manual.pdf
+  page_start: 174
+  page_end: 178
+  section: Residential Market Sector / Domestic Hot Water (DHW) End Use / Low Flow Shower Head
+
+description: >
+  Installation of a low flow (≤2.0 GPM) showerhead in a home, as a retrofit
+  direct install measure or a new installation.
+
+issues: [VR-017, VR-025]
+
+applications:
+  - id: direct_install
+    name: Direct Install
+    measure_code: RS_WT_DI_SHWRHD_0519
+    description: Retrofit direct install of a low flow showerhead.
+    baseline:
+      type: existing_equipment
+      description: >
+        Standard 2.5 GPM showerhead. Utilities may measure the actual flow rate
+        of the existing showerhead instead.
+    status: &implemented
+      metadata_extracted: true
+      variables_extracted: true
+      equations_extracted: true
+      calculation_implemented: true
+      automated_tests: true
+      human_reviewed: false
+    source: {page: 174}
+    issues: [VR-020]
+
+  - id: time_of_sale
+    name: Time of Sale
+    measure_code: RS_WT_TOS_SHWRHD_0519
+    description: New installation of a low flow showerhead.
+    baseline:
+      type: code_standard
+      description: Standard 2.5 GPM showerhead (EPAct 1992 maximum flow rate).
+    status: *implemented
+    source: {page: 174}
+    issues: [VR-020]
+
+variables:
+  - id: water_heater_fuel
+    name: Water heater fuel
+    description: Determines whether electric (kWh, kW) or fossil fuel (MMBtu) savings apply.
+    type: choice
+    choices:
+      - {id: electric, name: Electric}
+      - {id: fossil_fuel, name: Fossil fuel}
+    source: user_input
+    required: true
+    citation: {pages: [174, 176]}
+    issues: [VR-023]
+
+  - id: gpm_base
+    symbol: GPMbase
+    name: Baseline flow rate
+    description: Gallons per minute of the baseline showerhead; actual flow rate if recorded.
+    unit: gal/min
+    source: user_input
+    default: 2.5
+    exclusive_minimum: 0
+    citation: {page: 174, footnote: 460, note: EPAct 1992 maximum flow rate}
+    issues: [VR-020]
+
+  - id: gpm_low
+    symbol: GPMlow
+    name: Low flow rate
+    description: >
+      Rated flow rate of the installed unit, or actual flow rate if the baseline
+      flow rate was measured.
+    unit: gal/min
+    source: user_input
+    required: true
+    exclusive_minimum: 0
+    maximum: 2.0
+    citation: {page: 174, note: "Maximum from measure description: low flow (≤2.0 GPM)"}
+    issues: [VR-020, VR-021]
+
+  - id: people_per_household
+    symbol: "# people"
+    name: People per household
+    unit: people
+    source: user_input
+    default: 2.53
+    exclusive_minimum: 0
+    citation: {page: 175, footnote: 461, note: "If unknown, use 2.53 (EIA RECS)"}
+
+  - id: shower_minutes
+    symbol: TimeShower
+    name: Shower length
+    unit: minutes
+    source: deemed
+    value: 7.8
+    citation: {page: 175, footnote: 462}
+
+  - id: showers_per_person_per_day
+    symbol: ShowersPerson
+    name: Showers per person per day
+    unit: showers/person/day
+    source: deemed
+    value: 0.6
+    citation: {page: 175, footnote: 463}
+    issues: [VR-015]
+
+  - id: days_per_year
+    symbol: days/year
+    name: Days shower used per year
+    unit: days/year
+    source: deemed
+    value: 365
+    citation: {page: 175}
+
+  - id: showerheads_per_home
+    symbol: ShowerHeads/home
+    name: Showerheads per home
+    unit: showerheads
+    source: deemed
+    value: 1.3
+    citation: {page: 175, footnote: 464}
+
+  - id: pounds_per_gallon
+    symbol: "8.3"
+    name: Gallons to pounds conversion
+    unit: lb/gal
+    source: deemed
+    value: 8.3
+    citation: {page: 175}
+
+  - id: shower_temperature
+    symbol: TEMPsh
+    name: Shower water temperature
+    unit: °F
+    source: deemed
+    value: 105
+    citation: {page: 175, note: No source footnote given}
+    issues: [VR-015, VR-018]
+
+  - id: inlet_temperature
+    symbol: TEMPin
+    name: Inlet water temperature
+    unit: °F
+    source: deemed
+    value: 60.9
+    citation: {page: 175, footnote: 465}
+
+  - id: electric_recovery_efficiency
+    symbol: DHW Recovery Efficiency
+    name: Electric water heater recovery efficiency
+    source: deemed
+    value: 0.98
+    citation: {page: 175, footnote: 466}
+    issues: [VR-023]
+
+  - id: fossil_recovery_efficiency
+    symbol: Gas DHW Recovery Efficiency
+    name: Gas water heater recovery efficiency
+    source: deemed
+    value: 0.80
+    citation: {pages: [176, 177], footnote: 468}
+    issues: [VR-016]
+
+  - id: btu_per_kwh
+    symbol: "3,412"
+    name: Btu per kWh
+    unit: Btu/kWh
+    source: deemed
+    value: 3412
+    citation: {page: 175}
+
+  - id: btu_per_mmbtu
+    symbol: "10^6"
+    name: Btu per MMBtu
+    unit: Btu/MMBtu
+    source: deemed
+    value: 1000000
+    citation: {page: 176}
+
+  - id: gallons_per_ccf
+    symbol: "748"
+    name: Gallons per CCF
+    unit: gal/CCF
+    source: deemed
+    value: 748
+    citation: {page: 177}
+
+  - id: kwh_per_ccf_water
+    symbol: "2.07"
+    name: Water supply and treatment electricity intensity
+    unit: kWh/CCF
+    source: deemed
+    value: 2.07
+    citation: {page: 177, note: No source footnote given}
+    issues: [VR-019]
+
+  - id: coincidence_factor
+    symbol: CF
+    name: Summer peak coincidence factor
+    source: deemed
+    value: 0.0039
+    citation: {page: 176, footnote: 467}
+    issues: [VR-022]
+
+  - id: water_saved_gallons
+    name: Annual water saved
+    description: >
+      (GPMbase − GPMlow) × TimeShower × # people × ShowersPerson × days/year / ShowerHeads/home
+    unit: gal/year
+    source: derived
+    function: water_saved_gallons
+    variables:
+      - gpm_base
+      - gpm_low
+      - shower_minutes
+      - people_per_household
+      - showers_per_person_per_day
+      - days_per_year
+      - showerheads_per_home
+    citation: {pages: [174, 176, 177]}
+
+  - id: shower_hours_per_year
+    symbol: Hours
+    name: Annual shower hours
+    description: TimeShower × # people × ShowersPerson / 60 × days/year
+    unit: hours/year
+    source: derived
+    function: shower_hours_per_year
+    variables:
+      - shower_minutes
+      - people_per_household
+      - showers_per_person_per_day
+      - days_per_year
+    citation: {page: 176, note: "TRM shows 72 hours with default inputs"}
+    issues: [VR-024]
+
+outputs:
+  - id: kwh_savings
+    name: Annual electric savings
+    unit: kWh/year
+  - id: kw_savings
+    name: Summer peak demand savings
+    unit: kW
+  - id: mmbtu_savings
+    name: Annual fossil fuel savings
+    unit: MMBtu/year
+  - id: water_savings_ccf
+    name: Annual water savings
+    unit: CCF/year
+  - id: kwh_water_savings
+    name: Electric savings from water reduction
+    unit: kWh/year
+    description: >
+      Pumping and wastewater treatment savings. Utilities may consider whether
+      it is appropriate to claim; avoid double counting in cost-effectiveness tests.
+
+calculations:
+  - id: electric_savings
+    name: Electric water heater energy and peak demand savings
+    applications: [direct_install, time_of_sale]
+    applies_when: {water_heater_fuel: electric}
+    outputs: [kwh_savings, kw_savings]
+    variables:
+      - water_saved_gallons
+      - pounds_per_gallon
+      - shower_temperature
+      - inlet_temperature
+      - electric_recovery_efficiency
+      - btu_per_kwh
+      - shower_hours_per_year
+      - coincidence_factor
+    equation_display: >
+      ΔkWh = ((GPMbase − GPMlow) × TimeShower × # people × ShowersPerson × days/year
+      / ShowerHeads/home) × 8.3 × (TEMPsh − TEMPin) / DHW Recovery Efficiency / 3,412;
+      ΔkW = ΔkWh / Hours × CF
+    implementation:
+      function: electric_savings
+    source: {pages: [174, 175, 176], section: Annual Energy Savings Algorithm; Summer Coincident Peak kW Savings Algorithm}
+    issues: [VR-015, VR-022]
+
+  - id: fossil_fuel_savings
+    name: Fossil fuel water heater energy savings
+    applications: [direct_install, time_of_sale]
+    applies_when: {water_heater_fuel: fossil_fuel}
+    outputs: [mmbtu_savings]
+    variables:
+      - water_saved_gallons
+      - pounds_per_gallon
+      - shower_temperature
+      - inlet_temperature
+      - fossil_recovery_efficiency
+      - btu_per_mmbtu
+    equation_display: >
+      ΔMMBtu = ((GPMbase − GPMlow) × TimeShower × # people × ShowersPerson × days/year
+      / ShowerHeads/home) × 8.3 × (TEMPsh − TEMPin) / Gas DHW Recovery Efficiency / 10^6
+    implementation:
+      function: fossil_fuel_savings
+    source: {pages: [176, 177], section: Annual Fossil Fuel Savings Algorithm}
+    issues: [VR-016]
+
+  - id: water_savings
+    name: Water savings and associated electric savings
+    applications: [direct_install, time_of_sale]
+    outputs: [water_savings_ccf, kwh_water_savings]
+    variables:
+      - water_saved_gallons
+      - gallons_per_ccf
+      - kwh_per_ccf_water
+    equation_display: >
+      Water Savings = ((GPMbase − GPMlow) × TimeShower × # people × ShowersPerson
+      × days/year / ShowerHeads/home) / 748;
+      ΔkWhwater = 2.07 kWh/CCF × ΔWater
+    implementation:
+      function: water_savings
+    source: {page: 177, section: Annual Water Savings Algorithm; kWh Savings from Water Reduction}
+    issues: [VR-019]
+
+measure_life:
+  value: 10
+  unit: years
+  source: {page: 178, footnote: 470}
+
+status:
+  metadata_extracted: true
+  variables_extracted: true
+  equations_extracted: true
+  calculation_implemented: true
+  automated_tests: true
+  human_reviewed: false
+
+review:
+  reviewed_by: null
+  reviewed_date: null
+  notes: []
