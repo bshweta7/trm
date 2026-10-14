@@ -5,6 +5,7 @@ framework, so interfaces such as the Streamlit app (``trm_ui``) or a future
 HTTP API can share it unchanged.
 """
 
+from trm_engine.explain import ExplainedVariable, OutputExplanation, explain
 from trm_engine.inputs import InputValidationError
 from trm_engine.registry import MeasureRegistry, default_registry
 from trm_engine.service import (
@@ -20,10 +21,13 @@ __all__ = [
     "ApplicationNotImplementedError",
     "CalculationResult",
     "CalculationWarning",
+    "ExplainedVariable",
     "InputValidationError",
     "MeasureRegistry",
+    "OutputExplanation",
     "ValueOrigin",
     "calculate",
     "default_registry",
+    "explain",
     "input_variables",
 ]
