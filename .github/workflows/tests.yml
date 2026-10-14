@@ -44,3 +44,32 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -W error
+
+  # Builds a wheel, installs it into a fresh virtual environment and loads
+  # every measure from outside the repository. It is slower than the unit
+  # tests and doesn't depend on the Python version in a way the matrix would
+  # catch, so it runs once.
+  wheel:
+    name: Wheel install smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev]'
+
+      - name: Run wheel smoke test
+        env:
+          TRM_TEST_WHEEL: "1"
+        run: python -m pytest -W error tests/test_registry.py::test_installed_wheel_finds_reference_data
