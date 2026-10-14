@@ -3,20 +3,32 @@
 import pytest
 
 from trm_engine import calculate, default_registry, input_variables
+from urllib.parse import parse_qs, urlparse
+
+from trm_engine import InputValidationError
 from trm_ui.presentation import (
+    REQUIRED_MESSAGE,
     VALIDATION_REGISTER_URL,
+    MeasureHeader,
     application_options,
+    bug_report_url,
     collect_inputs,
+    current_failure,
     form_fields,
     format_citation,
     format_value,
+    group_fields,
     interpretation_notes,
     issue_links,
     measure_header,
     not_applicable_rows,
+    output_metrics,
     output_rows,
     provenance_rows,
     related_issue_ids,
+    result_status,
+    status_notice,
+    validation_messages,
     warning_items,
 )
 
@@ -154,3 +166,117 @@ def test_related_issue_ids():
     assert set(before) <= set(after)
     assert after == sorted(after)
     assert "VR-018" in after  # from the shower temperature variable used in the result
+
+
+# --- Layout, notices, and result freshness -----------------------------------
+
+
+def test_group_fields_uses_metadata_and_keeps_definition_order():
+    groups = group_fields(form_fields(input_variables(SHOWER, "direct_install")))
+    assert [(title, [f.id for f in fields]) for title, fields in groups] == [
+        ("Selections", ["water_heater_fuel"]),
+        ("Required values", ["gpm_low"]),
+        ("Optional — leave blank to use the TRM default", ["gpm_base", "people_per_household"]),
+    ]
+
+
+def test_group_fields_omits_empty_groups():
+    groups = group_fields(form_fields(input_variables(ASHP, "time_of_sale")))
+    assert [title for title, _ in groups] == ["Selections", "Required values"]
+    # Definition order keeps existing/efficient pairs adjacent for a two-column grid.
+    assert [f.id for f in groups[1][1]][:4] == [
+        "cooling_capacity_existing",
+        "cooling_capacity_efficient",
+        "heating_capacity_existing",
+        "heating_capacity_efficient",
+    ]
+
+
+def make_header(is_draft, human_reviewed):
+    return MeasureHeader("t", "DE TRM 5.0", is_draft, "draft" if is_draft else "final", "u", "p", "c", human_reviewed)
+
+
+def test_status_notice():
+    m = measure(ASHP)
+    assert status_notice(measure_header(m, m.application("time_of_sale"))) == (
+        "Based on the **draft** DE TRM 5.0. Calculations have not been independently validated."
+    )
+    assert status_notice(make_header(False, False)) == "Calculations have not been independently validated."
+    assert status_notice(make_header(False, True)) is None
+
+
+def test_output_metrics_show_every_output_with_units():
+    result = calculate(ASHP, "time_of_sale", ASHP_INPUTS)
+    metrics = output_metrics(result)
+    assert [m["label"] for m in metrics] == [
+        "Annual cooling electric savings",
+        "Annual heating electric savings",
+        "Annual electric savings",
+        "Summer system peak demand savings †",
+        "PJM summer peak demand savings †",
+    ]
+    assert metrics[2]["value"] == "192.8 kWh/year"
+    assert metrics[3]["value"] == "0.1087 kW"
+    assert "multiplies by CF" in metrics[3]["help"] and "VR-001" in metrics[3]["help"]
+
+
+def test_output_metrics_include_only_applicable_outputs():
+    result = calculate(SHOWER, "direct_install", {"water_heater_fuel": "fossil_fuel", "gpm_low": 2.0})
+    assert [m["label"] for m in output_metrics(result)] == [
+        "Annual fossil fuel savings",
+        "Annual water savings",
+        "Electric savings from water reduction",
+    ]
+
+
+def slot(inputs, measure_id=SHOWER, application="direct_install", **extra):
+    return {"measure_id": measure_id, "application": application, "inputs": inputs, **extra}
+
+
+A = {"water_heater_fuel": "electric", "gpm_low": 2.0}
+B = {"water_heater_fuel": "electric", "gpm_low": 1.5}
+
+
+@pytest.mark.parametrize(
+    ("stored", "failure", "measure_id", "application", "inputs", "expected"),
+    [
+        (None, None, SHOWER, "direct_install", A, "none"),
+        (slot(A), None, SHOWER, "direct_install", A, "current"),
+        (slot(A), None, SHOWER, "direct_install", B, "stale"),
+        (slot(A), None, SHOWER, "time_of_sale", A, "none"),  # other application
+        (slot(A), None, ASHP, "time_of_sale", A, "none"),  # other measure
+        (slot(A), slot(B, messages=["x"]), SHOWER, "direct_install", B, "previous"),  # failed on B
+        (slot(A), slot(B, messages=["x"]), SHOWER, "direct_install", {"gpm_low": 1.0}, "stale"),
+        (slot(A), slot(B, messages=["x"]), SHOWER, "direct_install", A, "current"),
+    ],
+)
+def test_result_status(stored, failure, measure_id, application, inputs, expected):
+    assert result_status(stored, failure, measure_id, application, inputs) == expected
+
+
+def test_current_failure_only_for_the_failed_inputs():
+    failure = slot(B, messages=["Low flow rate: too high"])
+    assert current_failure(failure, SHOWER, "direct_install", B) == ["Low flow rate: too high"]
+    assert current_failure(failure, SHOWER, "direct_install", A) is None
+    assert current_failure(None, SHOWER, "direct_install", B) is None
+
+
+def test_validation_messages_use_labels_and_friendly_wording():
+    fields = form_fields(input_variables(SHOWER, "direct_install"))
+    with pytest.raises(InputValidationError) as exc:
+        calculate(SHOWER, "direct_install", {"gpm_low": 2.5})
+    assert validation_messages(exc.value.details, fields) == [
+        f"Water heater fuel: {REQUIRED_MESSAGE}",
+        "Low flow rate (GPMlow) [gal/min]: Input should be less than or equal to 2",
+    ]
+
+
+def test_bug_report_url_prefills_context_but_no_inputs():
+    m = measure(SHOWER)
+    url = urlparse(bug_report_url(m, m.application("direct_install")))
+    assert (url.netloc, url.path) == ("github.com", "/bshweta7/trm/issues/new")
+    query = parse_qs(url.query)
+    assert query["title"] == ["Bug: Low Flow Shower Head — Direct Install"]
+    assert "Measure: de-res-water-heating-low-flow-shower-head" in query["body"][0]
+    assert "TRM: DE 5.0 (draft)" in query["body"][0]
+    assert bug_report_url() == "https://github.com/bshweta7/trm/issues/new"

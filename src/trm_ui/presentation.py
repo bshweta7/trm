@@ -10,11 +10,26 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
+from urllib.parse import urlencode
 
 from trm_engine import CalculationResult, ValueOrigin
 from trm_engine.models import Application, Citation, Measure, Variable, VariableType
 
-VALIDATION_REGISTER_URL = "https://github.com/bshweta7/trm/blob/dev/docs/validation_register.md"
+REPOSITORY_URL = "https://github.com/bshweta7/trm"
+VALIDATION_REGISTER_URL = f"{REPOSITORY_URL}/blob/dev/docs/validation_register.md"
+
+FIELD_GROUPS = {
+    "selections": "Selections",
+    "required": "Required values",
+    "optional": "Optional — leave blank to use the TRM default",
+}
+REQUIRED_MESSAGE = "This field is required."
+NOT_AVAILABLE_MESSAGE = "This application isn't available yet."
+UNEXPECTED_ERROR_MESSAGE = (
+    "Something went wrong while calculating. Please try again, and report a bug if it keeps happening."
+)
+
+ResultStatus = Literal["none", "current", "stale", "previous"]
 
 ORIGIN_LABELS = {
     ValueOrigin.USER_INPUT: "User input",
@@ -238,3 +253,111 @@ def related_issue_ids(measure: Measure, application_id: str, result: Calculation
             for item in group:
                 ids.update(item.issues)
     return sorted(ids)
+
+
+def group_fields(fields: Iterable[FormField]) -> list[tuple[str, list[FormField]]]:
+    """Group fields by existing metadata (choice / required / has a TRM default).
+
+    Field order within a group follows the measure definition. Empty groups
+    are omitted.
+    """
+    groups: dict[str, list[FormField]] = {key: [] for key in FIELD_GROUPS}
+    for f in fields:
+        key = "selections" if f.kind == "choice" else "required" if f.required else "optional"
+        groups[key].append(f)
+    return [(FIELD_GROUPS[key], items) for key, items in groups.items() if items]
+
+
+def status_notice(header: MeasureHeader) -> str | None:
+    """One compact notice about draft source data and missing independent validation."""
+    parts = []
+    if header.is_draft:
+        parts.append(f"Based on the **{header.source_status}** {header.trm}.")
+    if not header.human_reviewed:
+        parts.append("Calculations have not been independently validated.")
+    return " ".join(parts) or None
+
+
+def output_metrics(result: CalculationResult) -> list[dict[str, str]]:
+    """Every output as a metric: label, value with unit, and help text.
+
+    Outputs that depend on an implementation interpretation are marked with †.
+    """
+    metrics = []
+    for o in result.outputs.values():
+        help_text = f"Source: {format_citation(o.source)}"
+        if o.interpretation:
+            help_text = f"{o.interpretation}\n\n{help_text}"
+        if o.issues:
+            help_text += "\n\nRelated validation issues: " + ", ".join(o.issues)
+        metrics.append(
+            {
+                "label": o.name + (" †" if o.interpretation else ""),
+                "value": f"{format_value(o.value)} {o.unit}",
+                "help": help_text,
+            }
+        )
+    return metrics
+
+
+def _matches(slot: Mapping[str, Any] | None, measure_id: str, application_id: str, inputs: Mapping[str, Any]) -> bool:
+    return (
+        slot is not None
+        and slot["measure_id"] == measure_id
+        and slot["application"] == application_id
+        and slot["inputs"] == dict(inputs)
+    )
+
+
+def current_failure(
+    failure: Mapping[str, Any] | None, measure_id: str, application_id: str, inputs: Mapping[str, Any]
+) -> list[str] | None:
+    """Error messages from the last failed calculation, if it was for exactly these inputs."""
+    return list(failure["messages"]) if _matches(failure, measure_id, application_id, inputs) else None
+
+
+def result_status(
+    stored: Mapping[str, Any] | None,
+    failure: Mapping[str, Any] | None,
+    measure_id: str,
+    application_id: str,
+    inputs: Mapping[str, Any],
+) -> ResultStatus:
+    """How the last successful result relates to what is on screen now.
+
+    - ``none``: no result, or it belongs to another measure or application.
+    - ``current``: it was calculated from exactly the current inputs.
+    - ``previous``: calculating the current inputs failed; the result is from earlier inputs.
+    - ``stale``: the inputs changed and have not been calculated yet.
+    """
+    if stored is None or (stored["measure_id"], stored["application"]) != (measure_id, application_id):
+        return "none"
+    if _matches(failure, measure_id, application_id, inputs):
+        return "previous"
+    if stored["inputs"] == dict(inputs):
+        return "current"
+    return "stale"
+
+
+def validation_messages(details: Iterable[Mapping[str, str]], fields: Iterable[FormField]) -> list[str]:
+    """User-facing messages for ``InputValidationError.details``, using field labels."""
+    labels = {f.id: f.label for f in fields}
+    return [
+        f"{labels.get(d['field'], d['field'])}: "
+        + (REQUIRED_MESSAGE if d["message"] == "Field required" else d["message"])
+        for d in details
+    ]
+
+
+def bug_report_url(measure: Measure | None = None, application: Application | None = None) -> str:
+    """Link to a new GitHub issue, prefilled with the measure and TRM version (no user inputs)."""
+    if measure is None or application is None:
+        return f"{REPOSITORY_URL}/issues/new"
+    title = f"Bug: {measure.classification.name} — {application.name}"
+    body = (
+        f"Measure: {measure.id}\n"
+        f"Application: {application.id}\n"
+        f"TRM: {measure.jurisdiction} {measure.trm_version} ({measure.source.status})\n\n"
+        "What happened?\n\n\nWhat did you expect?\n"
+    )
+    return f"{REPOSITORY_URL}/issues/new?" + urlencode({"title": title, "body": body})
