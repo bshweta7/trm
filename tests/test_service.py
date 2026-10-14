@@ -6,7 +6,7 @@ import math
 import pytest
 
 from conftest import DEMO_MEASURE_ID, DEMO_VERSION_DIR
-from trm_engine import ApplicationNotImplementedError, InputValidationError, calculate
+from trm_engine import ApplicationNotImplementedError, InputValidationError, calculate, input_variables
 from trm_engine.inputs import user_inputs_for
 from trm_engine.measures import IMPLEMENTATIONS
 from trm_engine.registry import MeasureRegistry
@@ -158,6 +158,31 @@ def test_warning_check_must_return_bool(run, monkeypatch):
     monkeypatch.setitem(IMPLEMENTATIONS[DEMO_MEASURE_ID], "large_quantity", lambda quantity: quantity)
     with pytest.raises(RuntimeError, match="bool"):
         run(ELECTRIC_NORTH)
+
+
+def test_input_variables_public_metadata(registry):
+    variables = input_variables(DEMO_MEASURE_ID, "time_of_sale", registry=registry)
+    assert [v.id for v in variables] == ["fuel", "zone", "quantity", "hours"]
+    hours = variables[3]
+    assert (hours.required, hours.default, hours.unit, hours.citation.page) == (False, 1000, "hours/year", 1)
+    assert [c.id for c in variables[0].choices] == ["electric", "gas"]
+
+
+def test_input_variables_for_unimplemented_or_unknown_application(registry):
+    with pytest.raises(ApplicationNotImplementedError):
+        input_variables(DEMO_MEASURE_ID, "retrofit", registry=registry)
+    with pytest.raises(KeyError):
+        input_variables(DEMO_MEASURE_ID, "new_construction", registry=registry)
+
+
+def test_validation_error_details_are_structured(run):
+    with pytest.raises(InputValidationError) as exc:
+        run({"zone": "east", "quantity": 2, "colour": "blue"})
+    details = {d["field"]: d["message"] for d in exc.value.details}
+    assert set(details) == {"fuel", "zone", "colour"}
+    assert details["fuel"] == "Field required"
+    assert details["colour"] == "Extra inputs are not permitted"
+    assert exc.value.errors == [f"{d['field']}: {d['message']}" for d in exc.value.details]
 
 
 def test_unimplemented_application(run):
