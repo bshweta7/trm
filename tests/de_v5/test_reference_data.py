@@ -40,3 +40,20 @@ def test_yaml_functions_match_python_implementations(measure):
     ] + [(w.function, w.variables) for w in measure.warnings if w.function]
     for name, variables in named:
         assert list(inspect.signature(functions[name]).parameters) == variables, name
+
+
+@pytest.mark.parametrize("measure", all_measures(), ids=lambda m: m.id)
+def test_documentation_text_is_not_truncated(measure):
+    """Guards against YAML silently cutting text, e.g. an unquoted ' #' starting a comment."""
+    texts = [measure.description]
+    for v in measure.variables:
+        texts += [v.name, v.description]
+    for c in measure.calculations:
+        texts += [c.name, c.equation_display, c.equation_as_printed, c.interpretation]
+    for t in filter(None, texts):
+        assert not t.rstrip().endswith(("×", "/", "−", "-", "+", "(", "=")), t
+
+
+def test_shower_hours_formula_is_complete():
+    hours = default_registry().get("de-res-water-heating-low-flow-shower-head").variable("shower_hours_per_year")
+    assert hours.description == "TimeShower × # people × ShowersPerson / 60 × days/year"

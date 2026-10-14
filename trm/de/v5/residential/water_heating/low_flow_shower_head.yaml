@@ -248,7 +248,7 @@ variables:
   - id: shower_hours_per_year
     symbol: Hours
     name: Annual shower hours
-    description: TimeShower × # people × ShowersPerson / 60 × days/year
+    description: "TimeShower × # people × ShowersPerson / 60 × days/year"
     unit: hours/year
     source: derived
     function: shower_hours_per_year
