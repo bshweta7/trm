@@ -56,6 +56,20 @@ class OutputValue(BaseModel):
     issues: list[str]
 
 
+class CalculationWarning(BaseModel):
+    """Something the user should know about a result that is still calculated.
+
+    Distinct from errors (raised as exceptions, no result) and from ``issues``
+    (validation-register references attached to values and equations).
+    """
+
+    code: str
+    message: str
+    issues: list[str]
+    # Values of the variables the warning condition was evaluated on.
+    variables: dict[str, float | str]
+
+
 class NotApplicable(BaseModel):
     calculation: str
     outputs: list[str]
@@ -72,6 +86,7 @@ class CalculationResult(BaseModel):
     measure_code: str
     outputs: dict[str, OutputValue]
     not_applicable: list[NotApplicable]
+    warnings: list[CalculationWarning]
     variables: dict[str, ResolvedVariable]
     status: Status
 
@@ -179,6 +194,19 @@ def calculate(
                 issues=calc.issues,
             )
 
+    warnings: list[CalculationWarning] = []
+    for rule in measure.warnings_for(application):
+        values = {v: resolver.value(v) for v in rule.variables}
+        if rule.function is not None:
+            triggered = resolver.functions[rule.function](**values)
+            if not isinstance(triggered, bool):
+                raise RuntimeError(f"warning check {rule.function} must return a bool")
+            if not triggered:
+                continue
+        warnings.append(
+            CalculationWarning(code=rule.id, message=rule.message, issues=rule.issues, variables=values)
+        )
+
     return CalculationResult(
         measure_id=measure.id,
         measure_name=measure.classification.name,
@@ -189,6 +217,7 @@ def calculate(
         measure_code=app.measure_code,
         outputs=outputs,
         not_applicable=not_applicable,
+        warnings=warnings,
         variables=resolver.resolved,
         status=app.status,
     )

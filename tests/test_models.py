@@ -93,6 +93,21 @@ def mutations():
     def duplicate_variable(d):
         d["variables"].append(dict(variable(d, "rate")))
 
+    def warning_for_unknown_application(d):
+        d["warnings"][0]["applications"] = ["new_construction"]
+
+    def warning_on_unknown_variable(d):
+        d["warnings"][1]["variables"] = ["colour"]
+
+    def warning_function_without_variables(d):
+        d["warnings"][1]["variables"] = []
+
+    def warning_variables_without_function(d):
+        d["warnings"][0]["variables"] = ["quantity"]
+
+    def duplicate_warning(d):
+        d["warnings"].append(dict(d["warnings"][0]))
+
     return [
         unknown_source,
         unknown_field,
@@ -117,6 +132,11 @@ def mutations():
         malformed_issue_id,
         malformed_effective_date,
         duplicate_variable,
+        warning_for_unknown_application,
+        warning_on_unknown_variable,
+        warning_function_without_variables,
+        warning_variables_without_function,
+        duplicate_warning,
     ]
 
 

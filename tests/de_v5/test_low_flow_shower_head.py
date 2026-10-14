@@ -217,11 +217,54 @@ def test_invalid_inputs_are_rejected(inputs):
         calculate(MEASURE, "direct_install", inputs)
 
 
-@pytest.mark.trm_issue("VR-020")
-def test_measured_baseline_below_installed_flow_is_not_rejected():
-    # The TRM does not say how to treat a measured baseline below the installed
-    # flow rate; the implementation reports the (negative) result unchanged.
-    result = calculate(
-        MEASURE, "direct_install", {"water_heater_fuel": "electric", "gpm_base": 1.8, "gpm_low": 2.0}
+# --- Installations with no flow reduction ------------------------------------
+# The TRM does not say how to treat these (VR-020, VR-026). Results are returned
+# unchanged with a warning.
+
+
+def test_no_warning_when_flow_is_reduced():
+    result = calculate(MEASURE, "direct_install", {"water_heater_fuel": "electric", "gpm_low": 2.0})
+    assert result.warnings == []
+    measured = calculate(
+        MEASURE, "direct_install", {"water_heater_fuel": "electric", "gpm_base": 2.0, "gpm_low": 1.99}
     )
-    assert result.outputs["kwh_savings"].value < 0
+    assert measured.warnings == []
+
+
+@pytest.mark.trm_issue("VR-020", "VR-026")
+def test_equal_flow_rates_warn_and_give_zero_savings():
+    result = calculate(
+        MEASURE, "direct_install", {"water_heater_fuel": "electric", "gpm_base": 2.0, "gpm_low": 2.0}
+    )
+    [warning] = result.warnings
+    assert warning.code == "no_positive_water_savings"
+    assert warning.issues == ["VR-020", "VR-026"]
+    assert warning.variables == {"gpm_base": 2.0, "gpm_low": 2.0}
+    assert values(result) == {
+        "kwh_savings": 0.0,
+        "kw_savings": 0.0,
+        "water_savings_ccf": 0.0,
+        "kwh_water_savings": 0.0,
+    }
+
+
+@pytest.mark.trm_issue("VR-020", "VR-026")
+@pytest.mark.parametrize(
+    ("fuel", "expected"),
+    [
+        # gallons = (1.8 - 2.0) x 7.8 x 2.53 x 0.6 x 365 / 1.3 = -664.884
+        # i.e. -0.4 x the 2.5 -> 2.0 GPM default case.
+        ("electric", {"kwh_savings": -72.78258323563892, "kw_savings": -0.0039407971864009374}),
+        ("fossil_fuel", {"mmbtu_savings": -0.30420936315}),
+    ],
+)
+def test_installed_flow_above_baseline_warns_and_keeps_negative_result(fuel, expected):
+    result = calculate(
+        MEASURE, "time_of_sale", {"water_heater_fuel": fuel, "gpm_base": 1.8, "gpm_low": 2.0}
+    )
+    assert [w.code for w in result.warnings] == ["no_positive_water_savings"]
+    assert result.warnings[0].variables == {"gpm_base": 1.8, "gpm_low": 2.0}
+    assert values(result) == pytest.approx(
+        expected | {"water_savings_ccf": -0.8888823529411765, "kwh_water_savings": -1.8399864705882354},
+        rel=1e-12,
+    )

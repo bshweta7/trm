@@ -93,10 +93,16 @@ def water_savings(
     }
 
 
+def installed_flow_not_below_baseline(gpm_base: float, gpm_low: float) -> bool:
+    """True when the installed showerhead does not reduce the flow rate (VR-026)."""
+    return gpm_low >= gpm_base
+
+
 FUNCTIONS = {
     "water_saved_gallons": water_saved_gallons,
     "shower_hours_per_year": shower_hours_per_year,
     "electric_savings": electric_savings,
     "fossil_fuel_savings": fossil_fuel_savings,
     "water_savings": water_savings,
+    "installed_flow_not_below_baseline": installed_flow_not_below_baseline,
 }

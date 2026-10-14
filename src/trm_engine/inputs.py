@@ -27,6 +27,8 @@ def user_inputs_for(measure: Measure, application_id: str) -> list[Variable]:
     for calc in measure.calculations_for(application_id):
         pending.extend(calc.variables)
         pending.extend(calc.applies_when)
+    for rule in measure.warnings_for(application_id):
+        pending.extend(rule.variables)
     while pending:
         var_id = pending.pop()
         if var_id in needed:

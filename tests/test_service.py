@@ -25,10 +25,16 @@ def gas(unit_hours, rate):
     return {"therm_savings": unit_hours * rate / 100}
 
 
+def large_quantity(quantity):
+    return quantity > 5
+
+
 @pytest.fixture
 def registry(monkeypatch):
     monkeypatch.setitem(
-        IMPLEMENTATIONS, DEMO_MEASURE_ID, {"unit_hours": unit_hours, "electric": electric, "gas": gas}
+        IMPLEMENTATIONS,
+        DEMO_MEASURE_ID,
+        {"unit_hours": unit_hours, "electric": electric, "gas": gas, "large_quantity": large_quantity},
     )
     return MeasureRegistry(DEMO_VERSION_DIR)
 
@@ -122,6 +128,36 @@ def test_invalid_inputs(run, inputs, field):
     with pytest.raises(InputValidationError, match=field) as exc:
         run(inputs)
     assert exc.value.errors
+
+
+def test_unconditional_warning_is_always_returned(run):
+    [warning] = run(ELECTRIC_NORTH).warnings
+    assert warning.model_dump() == {
+        "code": "always_shown",
+        "message": "Shown on every Time of Sale result.",
+        "issues": ["VR-000"],
+        "variables": {},
+    }
+
+
+def test_conditional_warning_reports_the_values_it_checked(run):
+    result = run(ELECTRIC_NORTH | {"quantity": 6})
+    assert [w.code for w in result.warnings] == ["always_shown", "large_quantity"]
+    assert result.warnings[1].variables == {"quantity": 6}
+    # Warnings never change outputs: 6 x 1000 x 0.5 x 1.2
+    assert result.outputs["kwh_savings"].value == pytest.approx(3600)
+
+
+def test_warnings_are_separate_from_issue_references(run):
+    result = run({"fuel": "gas", "zone": "south", "quantity": 2})
+    assert result.outputs["therm_savings"].issues == ["VR-000"]
+    assert [w.code for w in result.warnings] == ["always_shown"]
+
+
+def test_warning_check_must_return_bool(run, monkeypatch):
+    monkeypatch.setitem(IMPLEMENTATIONS[DEMO_MEASURE_ID], "large_quantity", lambda quantity: quantity)
+    with pytest.raises(RuntimeError, match="bool"):
+        run(ELECTRIC_NORTH)
 
 
 def test_unimplemented_application(run):

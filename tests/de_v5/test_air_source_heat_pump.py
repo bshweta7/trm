@@ -181,6 +181,34 @@ def test_peak_demand_outputs_are_flagged_as_interpretation():
     assert result.outputs["kwh_savings"].interpretation is None
 
 
+@pytest.mark.trm_issue("VR-008")
+def test_eligibility_warning_is_returned_without_changing_results():
+    result = calculate(MEASURE, "time_of_sale", THREE_TON_WILMINGTON)
+    [warning] = result.warnings
+    assert warning.code == "efficient_equipment_eligibility_not_verified"
+    assert warning.issues == ["VR-008"]
+    assert warning.variables == {}
+    # Same values as test_time_of_sale_defaults_wilmington.
+    assert values(result) == pytest.approx(
+        {
+            "kwh_cooling_savings": 107.85,
+            "kwh_heating_savings": 85.0,
+            "kwh_savings": 192.85,
+            "kw_ssp_savings": 0.10874296435272045,
+            "kw_pjm_savings": 0.10401500938086304,
+        },
+        rel=1e-12,
+    )
+
+
+@pytest.mark.trm_issue("VR-008")
+def test_eligibility_warning_does_not_reject_low_efficiency_equipment():
+    # A unit below the baseline is still calculated (negative savings) and warned about.
+    result = calculate(MEASURE, "time_of_sale", THREE_TON_WILMINGTON | {"seer_efficient": 14})
+    assert result.outputs["kwh_cooling_savings"].value < 0
+    assert [w.code for w in result.warnings] == ["efficient_equipment_eligibility_not_verified"]
+
+
 def test_provenance_of_resolved_variables():
     result = calculate(MEASURE, "time_of_sale", THREE_TON_WILMINGTON)
     seer = result.variables["seer_baseline"]

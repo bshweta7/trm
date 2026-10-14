@@ -103,6 +103,28 @@ print(result.not_applicable[0].reason)
 # applies only when water_heater_fuel = electric
 ```
 
+Results can carry machine-readable `warnings`. A warning means the result is
+still calculated but needs attention. Each warning has a `code`, a `message`,
+the validation-register `issues` it relates to, and the input `variables` it
+checked:
+
+```python
+result = calculate(
+    "de-res-water-heating-low-flow-shower-head",
+    "direct_install",
+    {"water_heater_fuel": "electric", "gpm_base": 1.8, "gpm_low": 2.0},  # measured baseline
+)
+warning = result.warnings[0]
+print(warning.code, warning.issues, warning.variables)
+# no_positive_water_savings ['VR-020', 'VR-026'] {'gpm_base': 1.8, 'gpm_low': 2.0}
+print(round(result.outputs["kwh_savings"].value, 2))  # returned unchanged
+# -72.78
+```
+
+Every ASHP Time of Sale result carries `efficient_equipment_eligibility_not_verified`
+(VR-008). Warnings are separate from errors, which raise exceptions and return
+no result, and from the `issues` lists on outputs and variables.
+
 Invalid inputs raise `trm_engine.InputValidationError`, listing each problem.
 This includes unknown inputs and attempts to override deemed TRM values.
 
@@ -139,7 +161,7 @@ in an explicit map, so the YAML can't make arbitrary code run.
 ## Known TRM inconsistencies
 
 [docs/validation_register.md](docs/validation_register.md) lists every
-ambiguity, conflict and implementation decision found so far (VR-001 to VR-025).
+ambiguity, conflict and implementation decision found so far (VR-001 to VR-026).
 Each entry includes the TRM pages, the decision made, its impact and a question
 for an expert. YAML definitions (`issues: [VR-…]`) and tests
 (`@pytest.mark.trm_issue(...)`) link to these IDs.
