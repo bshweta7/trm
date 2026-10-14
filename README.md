@@ -49,27 +49,42 @@ pip install -e '.[ui]'
 streamlit run src/trm_ui/streamlit_app.py
 ```
 
-Choose a measure and one of its implemented applications in the sidebar, fill
-in the generated form, and press **Calculate**. The page shows:
+Choose a measure and an implemented application at the top of the page, fill
+in the form, and press **Calculate**.
 
-- the TRM version, measure code and source pages, with notices that the source
-  TRM is a draft and that the measure has not been reviewed by an expert;
-- savings with units, and notes on outputs that depend on an implementation
-  interpretation;
-- outputs that don't apply (for example, electric savings for a gas water heater);
-- structured warnings;
-- a table showing where every value came from, at full precision;
-- links to the related entries in the validation register.
+- **Form:** generated from the engine's input metadata and grouped the same way
+  for every measure: selections, required values, and optional values. Optional
+  inputs show the TRM default as a placeholder. If you leave one empty, the
+  engine uses the default and records that in the results. The form uses two
+  columns on wide screens and one on narrow screens.
+- **Notice:** one line says when the source TRM is a draft and when the measure
+  has not been independently validated.
+- **Results:** every applicable output appears as a card with its unit. A †
+  marks outputs that depend on an implementation interpretation, with the note
+  below. Outputs that don't apply (for example, electric savings for a gas
+  water heater) are listed, and calculation warnings appear under the cards.
+- **Details:** collapsed sections hold the output details (source, issues) and
+  the full-precision record of where every value came from.
+- **Validation issues:** a collapsed section links each related issue to the
+  validation register. The app doesn't show each issue's review status;
+  structured issue metadata from the engine is planned for a later PR.
+- **Report a bug:** opens a GitHub issue prefilled with the measure,
+  application and TRM version. Your inputs aren't included.
 
-Optional inputs show the TRM default as a placeholder. If you leave one empty,
-the engine uses the default and records that in the results. Invalid inputs are
-reported per field.
+**When results are shown**
+
+| Situation | What you see |
+|---|---|
+| Calculated with the current inputs | The results. They stay visible while you use the page. |
+| Inputs edited since the last calculation | No numbers; a notice to press **Calculate** again. |
+| The latest calculation failed | The error, plus the last successful result labelled **Previous result**, noting that it doesn't match the inputs you submitted. |
+| Different measure or application selected | No results until you calculate. |
+
+Invalid inputs are listed by field. Unexpected failures show a general message;
+the technical details go to the server log, not the page.
 
 Displayed values are rounded to about four significant figures. Calculations
 are never rounded.
-
-The app shows issue IDs and links to the register, but not each issue's review
-status. Structured issue metadata from the engine is planned for a later PR.
 
 ## Continuous integration
 
