@@ -1,0 +1,3 @@
+# Streamlit Community Cloud installs from this file. It reads pyproject.toml
+# only as a Poetry project, so install this package (with the UI extra) here.
+.[ui]
