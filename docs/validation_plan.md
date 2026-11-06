@@ -4,8 +4,9 @@ A plan for systematically validating the two implemented measures, and a
 matrix of reference cases with independently derived expected values.
 
 **Status:** in progress. The engine-free reference calculator (§7 step 2)
-and the engine tests for the §6 gaps (step 3) exist. No discrepancies were
-found, and no calculation code was modified.
+the engine tests for the §6 gaps (step 3) and the check of transcribed TRM
+values against the measure YAML (step 4) exist. No discrepancies or
+transcription mismatches were found, and no calculation code was modified.
 
 ## 1. Principles
 
@@ -82,7 +83,7 @@ reduction in connected demand before CF: (BTUHCexist/EERbase − BTUHCee/EERee)/
 | A-P4 | ER kW, end of life, EERbasereplace 11.8 | **0.78 kW** | p. 80 | ±0.005 | VR-001, VR-010 | Yes (same as A-P2) |
 | A-P5 | ER kWh, remaining life, Baltimore, SEERexist 11, HSPFexist 3.41, 36,000 → 24,000 (both modes), SEERee 15, HSPFee 8.5 | **7,942 kWh** (exact 7,941.855) | p. 77 | ±0.5 | ER not implemented; same equation form as TOS | Yes (equation only) |
 | A-P6 | ER kWh, end of life as printed: SEERbasereplace **14**, HSPFbasereplace 3.41 | **7,420 kWh** (exact 7,420.088) | pp. 77–78 | ±0.5 | **VR-010**: the table value SEERbasereplace 15 gives **7,292.55 kWh** | **Gap** |
-| A-P7 | Wassmer EER from SEER: −0.02·SEER² + 1.12·SEER | SEER 15 → **12.3** (EERbase); SEER 14 → **11.76 ≈ 11.8** | p. 71 fn 190, p. 78 fn 203 | exact / ±0.05 | VR-011 (SEER² notation) | **Gap** (checks the deemed EERbase) |
+| A-P7 | Wassmer EER from SEER: −0.02·SEER² + 1.12·SEER | SEER 15 → **12.3** (EERbase); SEER 14 → **11.76 ≈ 11.8** | p. 71 fn 190, p. 78 fn 203 | exact / ±0.05 | VR-011 (SEER² notation) | Yes (deemed EERbase in YAML) |
 
 A-P5 to A-P7 can only check the equation form, because Early Replacement isn't
 implemented. A-P6 needs an expert decision first (see §5).
@@ -178,7 +179,8 @@ pass/fail tests, or used to justify changing formulas, until an expert decides.
 ## 6. Coverage gaps, in priority order
 
 Items 1–4 and 6, and the A-P5 part of item 5, are covered by
-`tests/validation/test_engine_gaps.py` (§7 step 3).
+`tests/validation/test_engine_gaps.py` (§7 step 3); A-P7 by
+`tests/validation/test_trm_constants.py` (step 4).
 
 1. **A-I3, A-L1:** full Baltimore results, and all three locations with the same equipment.
 2. **A-M2:** exact values for the below-baseline case (currently only the sign is checked).
@@ -199,7 +201,9 @@ Items 1–4 and 6, and the A-P5 part of item 5, are covered by
    that it never imports `trm_engine`.
 3. **Done:** `tests/validation/test_engine_gaps.py`. Add data-driven tests for the gaps in §6, one parametrized case per matrix
    row, keyed by matrix ID and linked to VR IDs with `@pytest.mark.trm_issue`.
-4. Add a test that checks each TRM value in the reference module against the
+4. **Done:** `tests/validation/test_trm_constants.py`, which also requires
+   every deemed value, default, limit and lookup in the YAML to have a
+   transcription. Add a test that checks each TRM value in the reference module against the
    corresponding value in the measure YAML. This is a second, independent
    transcription, so a typo in either would be caught.
 5. Keep this matrix updated as measures and expert decisions change.
