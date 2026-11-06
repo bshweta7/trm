@@ -268,6 +268,9 @@ def group_fields(fields: Iterable[FormField]) -> list[tuple[str, list[FormField]
     return [(FIELD_GROUPS[key], items) for key, items in groups.items() if items]
 
 
+CLAIMS_STATEMENT = "Do not use these results for official program savings claims until they have been reviewed."
+
+
 def status_notice(header: MeasureHeader) -> str | None:
     """One compact notice about draft source data and missing independent validation."""
     parts = []
@@ -275,7 +278,16 @@ def status_notice(header: MeasureHeader) -> str | None:
         parts.append(f"Based on the **{header.source_status}** {header.trm}.")
     if not header.human_reviewed:
         parts.append("Calculations have not been independently validated.")
-    return " ".join(parts) or None
+    if not parts:
+        return None
+    return " ".join(["**For review only.**", *parts, CLAIMS_STATEMENT])
+
+
+def results_notice(header: MeasureHeader) -> str | None:
+    """A one-line reminder shown with the results, where numbers get copied."""
+    if not (header.is_draft or not header.human_reviewed):
+        return None
+    return "Draft, unreviewed results: not for official program savings claims."
 
 
 def output_metrics(result: CalculationResult) -> list[dict[str, str]]:
