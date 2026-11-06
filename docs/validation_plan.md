@@ -3,10 +3,13 @@
 A plan for systematically validating the two implemented measures, and a
 matrix of reference cases with independently derived expected values.
 
-**Status:** in progress. The engine-free reference calculator (§7 step 2)
-the engine tests for the §6 gaps (step 3) and the check of transcribed TRM
-values against the measure YAML (step 4) exist. No discrepancies or
-transcription mismatches were found, and no calculation code was modified.
+**Status:** steps 2–4 of §7 are complete (merged in PRs #6–#8). They added
+the engine-free reference calculator, engine tests for the §6 gaps, and a
+check of the transcribed TRM values against the measure YAML. No
+discrepancies or transcription mismatches were found, and no calculation code
+was modified. The §5 questions are with the expert reviewer (§7 step 1).
+Passing tests show consistency with the implemented methodology, not expert
+approval.
 
 ## 1. Principles
 
@@ -39,6 +42,10 @@ transcription mismatches were found, and no calculation code was modified.
 
 ## 2. Audit of existing tests
 
+This audit records the state **before** §7 steps 2–4. The gaps it lists are
+now covered in `tests/validation/` (see §6); the matrices in §3–§4 show the
+current status of each case.
+
 The measure tests are in `tests/de_v5/`. Engine and UI tests use a synthetic
 fixture or check presentation, so they aren't calculation validation and are
 left out here.
@@ -63,8 +70,11 @@ Other observations:
   plan and matches the existing tests.
 - The derivations exist only as comments. There is no reusable, engine-free
   reference calculator, so each new case must be derived by hand.
+  *Addressed by `tests/validation/trm_reference.py`.*
 - No test checks that the TRM values used for expected answers (baselines,
   hours, constants) match the TRM text. They are re-typed in each test.
+  *Addressed by `tests/validation/test_trm_constants.py`, which compares an
+  independent transcription with the YAML (it can't check the PDF itself).*
 
 ## 3. Validation matrix — Air Source Heat Pump, Time of Sale (pp. 71–81)
 
@@ -104,7 +114,7 @@ implemented. A-P6 needs an expert decision first (see §5).
 | A-M2 | A-I1 with SEERee **14** (below baseline) | cooling **−123.2571**, heating 85.0, total **−38.2571**; kW unchanged from A-I1; eligibility warning present | Independent: 719×(36000/15−36000/14)/1000 | Yes |
 | A-M3 | A-I1 with every capacity doubled (72,000) | Every output exactly 2× A-I1 (215.7 / 170.0 / 385.7; 0.2174859287 / 0.2080300188) | Property (linear in capacity) | Yes |
 | A-M4 | Any case | kW PJM / kW SSP = 0.66 / 0.69 = 22/23 exactly | Property | Yes |
-| A-M5 | Any case | kWh total = cooling + heating | Property | Implied by A-I1/A-I2 |
+| A-M5 | Any case | kWh total = cooling + heating | Property | Yes |
 | A-L1 | Each location with A-I1 equipment | Wilmington 192.85; Baltimore 744×0.15 + 866×(36000/8.8−4000)/1000 = **111.6 + 78.7273 = 190.3273**; DC 935×0.15 + 822×0.0909091 = **140.25 + 74.7273 = 214.9773** kWh | Independent | Yes |
 | A-B1 | Ratings 0, negative capacity, text instead of number, unknown location, override of a deemed value, missing input | Rejected with a per-field error | Engine input contract (not TRM) | Yes |
 | A-B2 | Efficient capacity **larger** than existing (upsizing) | Calculated (cooling savings may be negative); no TRM rule | Property; VR-005 | **Gap**; flag for expert (§5) |
@@ -156,7 +166,7 @@ MMBtu = G×8.3×44.1/0.80/10⁶; CCF = G/748; kWh_water = 2.07×CCF.
 | S-F1 | Electric → kWh, kW, CCF, kWh_water; fossil → MMBtu, CCF, kWh_water | Outputs for the other fuel omitted, not zero | TRM pp. 174, 176 | VR-023 | Yes |
 | S-M1 | Same flows, **4 people** vs 2.53 | kWh scales by 4/2.53 (287.678 vs 181.956), but **kW is identical** (0.009851992966) because people cancels in kWh/Hours | Property | **VR-022** | Yes (records current behaviour); flag for expert (§5) |
 | S-M2 | GPMlow 1.5 vs 2.0 at GPMbase 2.5 | Every output exactly 2× (S-I2 = 2 × S-I1) | Property (linear in GPMbase − GPMlow) | — | Yes |
-| S-M3 | Any case | kWh_water = 2.07 × CCF; kW = kWh / H × 0.0039 | Property | VR-019 | Implied by S-I cases |
+| S-M3 | Any case | kWh_water = 2.07 × CCF; kW = kWh / H × 0.0039 | Property | VR-019 | Yes |
 
 ## 5. Ambiguous cases for expert review
 
@@ -190,20 +200,24 @@ Items 1–4 and 6, and the A-P5 part of item 5, are covered by
 6. **S-M1:** the household-size invariance of kW, recorded as a property test that references VR-022. It shows current behaviour without endorsing it.
 7. **Expert-dependent:** A-P6, A-B2. Add them only after the related issues are resolved.
 
-## 7. Proposed next steps
+## 7. Next steps
 
-1. Review this plan, and send the §5 items to an energy efficiency expert
-   together with the validation register.
-2. **Done:** `tests/validation/trm_reference.py`, checked by
-   `tests/validation/test_trm_reference.py`. Add an engine-free reference module under `tests/validation/`. It would
-   hold the TRM values (each with a page reference) and the exact-arithmetic
-   formulas, so every expected value is reproducible. A check would enforce
-   that it never imports `trm_engine`.
-3. **Done:** `tests/validation/test_engine_gaps.py`. Add data-driven tests for the gaps in §6, one parametrized case per matrix
-   row, keyed by matrix ID and linked to VR IDs with `@pytest.mark.trm_issue`.
-4. **Done:** `tests/validation/test_trm_constants.py`, which also requires
+1. **In progress:** send the §5 items to the EM&V expert reviewer, together
+   with the validation register. Record each answer in the register with the
+   reviewer's name and date.
+2. **Done (PR #6):** `tests/validation/trm_reference.py` holds the TRM values
+   (each with a page reference) and the formulas in exact arithmetic, so every
+   expected value is reproducible. `tests/validation/test_trm_reference.py`
+   checks it against this matrix and enforces that it never imports
+   `trm_engine`.
+3. **Done (PR #7):** `tests/validation/test_engine_gaps.py` has data-driven
+   engine tests for the §6 gaps, one parametrized case per matrix row, keyed
+   by matrix ID and linked to VR IDs with `@pytest.mark.trm_issue`.
+4. **Done (PR #8):** `tests/validation/test_trm_constants.py` checks each TRM
+   value in the reference module against the measure YAML. Because the two are
+   separate transcriptions, a typo in either fails the test. It also requires
    every deemed value, default, limit and lookup in the YAML to have a
-   transcription. Add a test that checks each TRM value in the reference module against the
-   corresponding value in the measure YAML. This is a second, independent
-   transcription, so a typo in either would be caught.
-5. Keep this matrix updated as measures and expert decisions change.
+   transcription.
+5. After the expert review: add A-P6 and A-B2 (§6 item 7), apply any
+   resolutions in YAML, code and tests together, and keep this matrix updated
+   as measures and decisions change.
