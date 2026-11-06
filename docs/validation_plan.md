@@ -3,8 +3,9 @@
 A plan for systematically validating the two implemented measures, and a
 matrix of reference cases with independently derived expected values.
 
-**Status:** proposed. No tests have been added or changed for this plan, and
-no calculation code was modified.
+**Status:** in progress. The engine-free reference calculator (§7 step 2)
+exists; no engine tests have been added for the §6 gaps yet, and no
+calculation code was modified.
 
 ## 1. Principles
 
@@ -184,11 +185,12 @@ pass/fail tests, or used to justify changing formulas, until an expert decides.
 6. **S-M1:** the household-size invariance of kW, recorded as a property test that references VR-022. It shows current behaviour without endorsing it.
 7. **Expert-dependent:** A-P6, A-B2. Add them only after the related issues are resolved.
 
-## 7. Proposed next steps (not started)
+## 7. Proposed next steps
 
 1. Review this plan, and send the §5 items to an energy efficiency expert
    together with the validation register.
-2. Add an engine-free reference module under `tests/validation/`. It would
+2. **Done:** `tests/validation/trm_reference.py`, checked by
+   `tests/validation/test_trm_reference.py`. Add an engine-free reference module under `tests/validation/`. It would
    hold the TRM values (each with a page reference) and the exact-arithmetic
    formulas, so every expected value is reproducible. A check would enforce
    that it never imports `trm_engine`.
