@@ -52,9 +52,15 @@ streamlit run src/trm_ui/streamlit_app.py
 Choose a measure and an implemented application at the top of the page, fill
 in the form, and press **Calculate**.
 
-On Streamlit Community Cloud, use `src/trm_ui/streamlit_app.py` as the main
-file and Python 3.11 or later. Dependencies come from `requirements.txt`, which
-installs this package with the `ui` extra.
+On Streamlit Community Cloud, deploy from the `dev` branch with
+`src/trm_ui/streamlit_app.py` as the main file, and choose Python 3.12 (the
+version CI tests) under Advanced settings. Dependencies come from
+`requirements.txt`, which installs this package with the `ui` extra. No secrets
+are needed.
+
+Every page states that results come from the draft TRM, have not been
+independently validated, and must not be used for official program savings
+claims until reviewed.
 
 - **Form:** generated from the engine's input metadata and grouped the same way
   for every measure: selections, required values, and optional values. Optional

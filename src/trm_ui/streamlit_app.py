@@ -94,8 +94,11 @@ def render_explanation(explanation: OutputExplanation, measure: Measure) -> None
         )
 
 
-def render_result(result: CalculationResult, measure: Measure, *, previous: bool) -> None:
+def render_result(result: CalculationResult, measure: Measure, header: p.MeasureHeader, *, previous: bool) -> None:
     st.subheader("Previous result" if previous else "Savings")
+    reminder = p.results_notice(header)
+    if reminder:
+        st.warning(reminder, icon="⚠️")
     metrics = p.output_metrics(result)
     for start in range(0, len(metrics), 2):
         columns = st.columns(2)
@@ -193,13 +196,13 @@ def main() -> None:
     stored = st.session_state.get(RESULT_KEY)
     status = p.result_status(stored, st.session_state.get(FAILURE_KEY), measure_id, application_id, inputs)
     if status == "current":
-        render_result(stored["result"], measure, previous=False)
+        render_result(stored["result"], measure, header, previous=False)
     elif status == "previous":
         st.info(
             "The values below are from an earlier calculation. "
             "They do not correspond to the inputs you just submitted."
         )
-        render_result(stored["result"], measure, previous=True)
+        render_result(stored["result"], measure, header, previous=True)
     elif status == "stale":
         st.info("Inputs changed since the last calculation. Press **Calculate** to update the results.")
 

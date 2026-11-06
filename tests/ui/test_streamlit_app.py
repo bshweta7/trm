@@ -70,9 +70,9 @@ def test_layout_has_no_sidebar_and_one_compact_notice():
     assert at.selectbox(key="measure").options == ["Air Source Heat Pump", "Low Flow Shower Head"]
     assert at.selectbox(key=f"application:{ASHP}").options == ["Time of Sale"]
     assert "Not implemented yet: Early Replacement" in text(at.caption)
-    assert [w.value for w in at.warning] == [
-        "Based on the **draft** DE TRM 5.0. Calculations have not been independently validated."
-    ]
+    [notice] = [w.value for w in at.warning]
+    assert notice.startswith("**For review only.** Based on the **draft** DE TRM 5.0.")
+    assert notice.endswith("Do not use these results for official program savings claims until they have been reviewed.")
     assert "DE TRM 5.0" in text(at.caption)
     assert not at.metric  # nothing calculated yet
     assert "Report a bug" in text(at.caption)
@@ -96,6 +96,24 @@ def test_validation_issues_are_in_a_collapsed_expander():
 
 
 # --- Results -------------------------------------------------------------------
+
+RESULTS_REMINDER = "Draft, unreviewed results: not for official program savings claims."
+
+
+@pytest.mark.parametrize(
+    "measure_id, application, inputs",
+    [
+        (ASHP, "time_of_sale", ASHP_INPUTS),
+        (SHOWER, "direct_install", {"water_heater_fuel": "electric", "gpm_low": 2.0}),
+        (SHOWER, "time_of_sale", {"water_heater_fuel": "fossil_fuel", "gpm_low": 1.5}),
+    ],
+)
+def test_every_implemented_measure_calculates_with_draft_reminder(measure_id, application, inputs):
+    at = submit(start(measure_id, application), measure_id, application, inputs)
+    assert at.metric
+    warnings = [w.value for w in at.warning]
+    assert "official program savings claims" in warnings[0]  # top notice
+    assert RESULTS_REMINDER in warnings
 
 
 def test_ashp_metrics_interpretation_warning_and_collapsed_details():

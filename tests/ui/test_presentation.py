@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlparse
 
 from trm_engine import InputValidationError, explain
 from trm_ui.presentation import (
+    CLAIMS_STATEMENT,
     REQUIRED_MESSAGE,
     VALIDATION_REGISTER_URL,
     MeasureHeader,
@@ -30,6 +31,7 @@ from trm_ui.presentation import (
     provenance_rows,
     related_issue_ids,
     result_status,
+    results_notice,
     shared_calculation_note,
     status_notice,
     validation_messages,
@@ -203,10 +205,24 @@ def make_header(is_draft, human_reviewed):
 def test_status_notice():
     m = measure(ASHP)
     assert status_notice(measure_header(m, m.application("time_of_sale"))) == (
-        "Based on the **draft** DE TRM 5.0. Calculations have not been independently validated."
+        "**For review only.** Based on the **draft** DE TRM 5.0. Calculations have not been "
+        "independently validated. Do not use these results for official program savings claims "
+        "until they have been reviewed."
     )
-    assert status_notice(make_header(False, False)) == "Calculations have not been independently validated."
+    assert status_notice(make_header(False, False)) == (
+        "**For review only.** Calculations have not been independently validated. " + CLAIMS_STATEMENT
+    )
+    assert status_notice(make_header(True, True)).startswith("**For review only.** Based on the **draft**")
     assert status_notice(make_header(False, True)) is None
+
+
+@pytest.mark.parametrize("is_draft, reviewed", [(True, False), (True, True), (False, False)])
+def test_results_notice_whenever_draft_or_unreviewed(is_draft, reviewed):
+    assert "not for official program savings claims" in results_notice(make_header(is_draft, reviewed))
+
+
+def test_no_results_notice_for_final_reviewed_data():
+    assert results_notice(make_header(False, True)) is None
 
 
 def test_output_metrics_show_every_output_with_units():
