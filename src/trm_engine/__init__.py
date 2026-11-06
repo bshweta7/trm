@@ -7,7 +7,8 @@ HTTP API can share it unchanged.
 
 from trm_engine.explain import ExplainedVariable, OutputExplanation, explain
 from trm_engine.inputs import InputValidationError
-from trm_engine.registry import MeasureRegistry, default_registry
+from trm_engine.models import ApplicationNotFoundError
+from trm_engine.registry import MeasureNotFoundError, MeasureRegistry, default_registry
 from trm_engine.service import (
     ApplicationNotImplementedError,
     CalculationResult,
@@ -18,11 +19,13 @@ from trm_engine.service import (
 )
 
 __all__ = [
+    "ApplicationNotFoundError",
     "ApplicationNotImplementedError",
     "CalculationResult",
     "CalculationWarning",
     "ExplainedVariable",
     "InputValidationError",
+    "MeasureNotFoundError",
     "MeasureRegistry",
     "OutputExplanation",
     "ValueOrigin",

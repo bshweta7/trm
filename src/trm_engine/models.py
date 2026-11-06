@@ -16,6 +16,13 @@ IssueId = Annotated[str, StringConstraints(pattern=r"^VR-\d{3}$")]
 Identifier = Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9_]*$")]
 
 
+class ApplicationNotFoundError(KeyError):
+    """The measure has no application with the given ID.
+
+    A KeyError subclass, so callers that caught KeyError keep working.
+    """
+
+
 class StrictModel(BaseModel):
     """Reject unknown keys so typos and invented fields fail loudly."""
 
@@ -349,7 +356,7 @@ class Measure(StrictModel):
         for a in self.applications:
             if a.id == application_id:
                 return a
-        raise KeyError(application_id)
+        raise ApplicationNotFoundError(f"{self.id}: unknown application {application_id!r}")
 
     def calculations_for(self, application_id: str) -> list[Calculation]:
         return [c for c in self.calculations if application_id in c.applications]
