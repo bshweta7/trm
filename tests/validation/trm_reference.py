@@ -91,6 +91,7 @@ def ashp_time_of_sale(
 
 # --- Low Flow Shower Head (pp. 174–178) -------------------------------------
 
+SHOWER_GPM_LOW_MAX = F("2.0")  # p. 174, measure description "low flow (≤2.0 GPM)"; VR-021
 SHOWER_GPM_BASE_DEFAULT = F("2.5")  # p. 174, fn 460
 SHOWER_PEOPLE_DEFAULT = F("2.53")  # p. 175, fn 461
 SHOWER_MINUTES = F("7.8")  # p. 175, fn 462
