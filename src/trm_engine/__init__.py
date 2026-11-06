@@ -5,9 +5,11 @@ framework, so interfaces such as the Streamlit app (``trm_ui``) or a future
 HTTP API can share it unchanged.
 """
 
+from trm_engine.batch import BatchResult, BatchRow, RowError, RowErrorCode, RowOutcome, calculate_batch
 from trm_engine.explain import ExplainedVariable, OutputExplanation, explain
 from trm_engine.inputs import InputValidationError
-from trm_engine.registry import MeasureRegistry, default_registry
+from trm_engine.models import ApplicationNotFoundError
+from trm_engine.registry import MeasureNotFoundError, MeasureRegistry, default_registry
 from trm_engine.service import (
     ApplicationNotImplementedError,
     CalculationResult,
@@ -18,15 +20,23 @@ from trm_engine.service import (
 )
 
 __all__ = [
+    "ApplicationNotFoundError",
     "ApplicationNotImplementedError",
+    "BatchResult",
+    "BatchRow",
     "CalculationResult",
     "CalculationWarning",
     "ExplainedVariable",
     "InputValidationError",
+    "MeasureNotFoundError",
     "MeasureRegistry",
     "OutputExplanation",
+    "RowError",
+    "RowErrorCode",
+    "RowOutcome",
     "ValueOrigin",
     "calculate",
+    "calculate_batch",
     "default_registry",
     "explain",
     "input_variables",

@@ -271,6 +271,45 @@ for v in e.variables[:3]:
 calculation produces several outputs, as with ASHP cooling, heating and total
 kWh, the explanation lists the values for the whole calculation.
 
+To calculate many installed measures at once, use `calculate_batch()`. Rows can
+mix measures and applications. Each row is identified by its `measure_id` and
+`application` and is passed to `calculate()` unchanged, so a batch result is
+the same as a single calculation. A row that fails gets structured errors, and
+the other rows are still calculated:
+
+```python
+from trm_engine import calculate_batch
+
+ashp = {"location": "baltimore_md", "cooling_capacity_existing": 36000, "cooling_capacity_efficient": 36000,
+        "heating_capacity_existing": 36000, "heating_capacity_efficient": 36000,
+        "seer_efficient": 16, "hspf_efficient": 9, "eer_efficient": 13}
+batch = calculate_batch([
+    {"row_id": "A1", "measure_id": "de-res-hvac-air-source-heat-pump", "application": "time_of_sale", "inputs": ashp},
+    {"row_id": "S1", "measure_id": "de-res-water-heating-low-flow-shower-head", "application": "direct_install",
+     "inputs": {"water_heater_fuel": "electric", "gpm_low": 1.5}},
+    {"row_id": "S2", "measure_id": "de-res-water-heating-low-flow-shower-head", "application": "direct_install",
+     "inputs": {"water_heater_fuel": "electric", "gpm_low": 2.5}},
+])
+print(batch.ok_count, batch.error_count, batch.warning_count)
+for row in batch.rows:
+    if row.status == "ok":
+        print(row.row_id, row.result.outputs["kwh_savings"].value, [w.code for w in row.result.warnings])
+    else:
+        print(row.row_id, [(e.code.value, e.field, e.message) for e in row.errors])
+# 2 1 1
+# A1 190.3272727272724 ['efficient_equipment_eligibility_not_verified']
+# S1 363.9129161781945 []
+# S2 [('invalid_input', 'gpm_low', 'Input should be less than or equal to 2')]
+```
+
+Error codes: `invalid_row` (missing `measure_id` or `application`, a
+misspelled key), `duplicate_row_id`, `unknown_measure`, `unknown_application`,
+`application_not_implemented`, `invalid_input` (one per failing input, with
+`field`), and `internal_error` (an unexpected failure, logged with the row ID).
+Rows without a `row_id` are numbered by position. Every row that shares a
+`row_id` gets no result. CSV input and output are planned; see
+[docs/batch_plan.md](docs/batch_plan.md).
+
 To browse measures:
 
 ```python

@@ -1,6 +1,10 @@
 # Batch Calculation MVP — Proposal
 
-**Status:** proposed, not started. Nothing in this document is implemented.
+**Status:** PRs 1–2 of §10 are implemented (`trm_engine/batch.py`):
+`calculate_batch()`, its models, and `ApplicationNotFoundError`. CSV input and
+output (PRs 3–5) are not started. §3a records where the implementation differs
+from this proposal; §5 was revised after review to put a consolidated
+one-line-per-row results file first.
 
 The goal is to make the calculation engine, not the Streamlit UI, the primary
 product. A user hands the engine many installed measures, possibly of
@@ -88,6 +92,23 @@ Error mapping inside the loop:
 Warnings stay on `result.warnings`, so a row can be `ok` with warnings, for
 example a showerhead with no flow reduction (VR-026).
 
+### 3a. As implemented (differences from the proposal above)
+
+- **Raw rows are accepted.** `calculate_batch()` takes `BatchRow` objects or
+  plain mappings (e.g. from JSON), so a malformed row becomes a row error
+  instead of an exception before the batch starts. This adds the code
+  `invalid_row`: a missing `measure_id` or `application`, a misspelled key,
+  `inputs` that isn't a mapping, or an unusable `row_id`.
+- **Duplicate row IDs are a row error, not a batch error.** Every row that
+  shares a `row_id` gets `duplicate_row_id` and no result, and the other rows
+  still calculate. Duplicate rows are still validated, so their other errors
+  are reported in the same pass. Rows without a `row_id` are numbered by
+  position (`"1"`, `"2"`, …), and integer IDs are converted to text.
+- **`parse_error` is left to the CSV layer** (PR 3), where cell text is
+  converted. At the library level, inputs are typed and a text number such as
+  `"2.0"` is `invalid_input`, exactly as in `calculate()`.
+- `BatchResult` serializes `ok_count`, `error_count` and `warning_count`.
+
 ## 4. CSV input schema
 
 One file, one row per installed measure, measures mixed freely.
@@ -136,11 +157,34 @@ Two generated helpers make the schema discoverable without reading YAML:
 
 ## 5. CSV outputs
 
-Mixed measures produce different outputs, so a wide output file would be mostly
-empty and would change shape with every measure added. The outputs are in long
-form instead: three files, all keyed by `row_id`.
+*Revised after review.* The main output is a consolidated **`results.csv`**
+with one line per input row. Detail files hold the long-form data for
+programmatic use and review. Every file is keyed by `row_id`.
 
-**`rows.csv`**: one line per input row. This is the batch summary.
+**`results.csv` (consolidated)**: one line per input row, in input order.
+
+- Fixed columns first: `row_id`, `measure_id`, `application`, `status`,
+  `measure_code`, `jurisdiction`, `trm_version`, `source_status`,
+  `human_reviewed`, `warnings` (codes), `errors` (`code field: message; …`),
+  `issues` (all VR IDs for the row).
+- Then three columns per output ID present anywhere in the batch, in measure
+  and YAML order: `<output>`, `<output>__unit`, `<output>__note`. The note
+  holds the interpretation (e.g. VR-001 for ASHP peak kW), or `not applicable`
+  when that output doesn't apply to the row's inputs.
+- Cells for outputs that don't belong to a row's measure stay blank. A blank
+  value never means zero: an applicable output always has a value, and a
+  non-applicable one is marked as such in its note.
+- An output ID shared by several measures shares one column. For example,
+  ASHP and shower `kwh_savings` are both "Annual electric savings" in
+  kWh/year, so a portfolio total is one column sum. The writer fails loudly if
+  measures ever give the same output ID different units, and a test enforces
+  it. *Open decision:* the alternative is one column per measure and output.
+  It's never ambiguous, but it gets wide and can't be summed directly.
+
+The two files below were the original long-form proposal. They remain as
+detail exports.
+
+**`rows.csv`** (detail): one line per input row. This is the batch summary.
 
 | Column | Example |
 |---|---|
@@ -152,7 +196,7 @@ form instead: three files, all keyed by `row_id`.
 | `error_count`, `errors` | `0`, `""` (else `field: message; …`) |
 | `warning_count`, `warnings` | `1`, `no_positive_water_savings` |
 
-**`results.csv`**: one line per output value of an `ok` row.
+**`outputs.csv`** (detail): one line per output value of an `ok` row.
 
 | Column | Example |
 |---|---|
@@ -165,7 +209,7 @@ form instead: three files, all keyed by `row_id`.
 | `issues` | `VR-015;VR-022` |
 
 Outputs that don't apply to a row (e.g. kWh for a fossil-fuel water heater)
-have no line in `results.csv`. `rows.csv` records them under
+have no line in `outputs.csv`. `rows.csv` records them under
 `not_applicable`, so a missing output is never mistaken for zero.
 
 **`provenance.csv`**: one line per resolved variable of an `ok` row: `row_id`,
@@ -243,6 +287,8 @@ a row limit (e.g. 10,000). Background jobs aren't needed at this size.
 - Determinism: the same file gives byte-identical output files.
 
 ## 10. Complexity and PR sequence
+
+PRs 1 and 2 were combined into one PR (two commits).
 
 Overall: **small to medium.** About 500–700 lines of code plus tests, and no
 change to formulas or YAML. The open decisions are in the CSV cell rules

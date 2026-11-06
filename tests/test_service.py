@@ -6,7 +6,13 @@ import math
 import pytest
 
 from conftest import DEMO_MEASURE_ID, DEMO_VERSION_DIR
-from trm_engine import ApplicationNotImplementedError, InputValidationError, calculate, input_variables
+from trm_engine import (
+    ApplicationNotFoundError,
+    ApplicationNotImplementedError,
+    InputValidationError,
+    calculate,
+    input_variables,
+)
 from trm_engine.inputs import user_inputs_for
 from trm_engine.measures import IMPLEMENTATIONS
 from trm_engine.registry import MeasureRegistry
@@ -171,7 +177,7 @@ def test_input_variables_public_metadata(registry):
 def test_input_variables_for_unimplemented_or_unknown_application(registry):
     with pytest.raises(ApplicationNotImplementedError):
         input_variables(DEMO_MEASURE_ID, "retrofit", registry=registry)
-    with pytest.raises(KeyError):
+    with pytest.raises(ApplicationNotFoundError):
         input_variables(DEMO_MEASURE_ID, "new_construction", registry=registry)
 
 
@@ -191,8 +197,9 @@ def test_unimplemented_application(run):
 
 
 def test_unknown_application(run):
-    with pytest.raises(KeyError):
+    with pytest.raises(ApplicationNotFoundError, match="new_construction") as exc:
         run(ELECTRIC_NORTH, application="new_construction")
+    assert isinstance(exc.value, KeyError)  # existing callers catching KeyError still work
 
 
 def test_function_returning_wrong_outputs_is_an_error(run, monkeypatch):
