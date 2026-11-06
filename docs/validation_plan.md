@@ -4,8 +4,8 @@ A plan for systematically validating the two implemented measures, and a
 matrix of reference cases with independently derived expected values.
 
 **Status:** in progress. The engine-free reference calculator (§7 step 2)
-exists; no engine tests have been added for the §6 gaps yet, and no
-calculation code was modified.
+and the engine tests for the §6 gaps (step 3) exist. No discrepancies were
+found, and no calculation code was modified.
 
 ## 1. Principles
 
@@ -80,7 +80,7 @@ reduction in connected demand before CF: (BTUHCexist/EERbase − BTUHCee/EERee)/
 | A-P2 | TOS kW SSP, 36,000 → 24,000, EERbase 11.8, EERee 12.5, CF 0.69 | **0.78 kW** (exact 0.780285) | p. 79 | ±0.005 | VR-001: the printed form (÷ CF) would give 1.639 kW | Yes |
 | A-P3 | ER kW, remaining life, EERexist 9.9, 36,000 → 24,000, EERee 12.5 | **1.18 kW** (exact 1.184291) | p. 80 | ±0.005 | VR-001; ER not implemented (VR-010) | Yes (TOS equation, same form) |
 | A-P4 | ER kW, end of life, EERbasereplace 11.8 | **0.78 kW** | p. 80 | ±0.005 | VR-001, VR-010 | Yes (same as A-P2) |
-| A-P5 | ER kWh, remaining life, Baltimore, SEERexist 11, HSPFexist 3.41, 36,000 → 24,000 (both modes), SEERee 15, HSPFee 8.5 | **7,942 kWh** (exact 7,941.855) | p. 77 | ±0.5 | ER not implemented; same equation form as TOS | **Gap** |
+| A-P5 | ER kWh, remaining life, Baltimore, SEERexist 11, HSPFexist 3.41, 36,000 → 24,000 (both modes), SEERee 15, HSPFee 8.5 | **7,942 kWh** (exact 7,941.855) | p. 77 | ±0.5 | ER not implemented; same equation form as TOS | Yes (equation only) |
 | A-P6 | ER kWh, end of life as printed: SEERbasereplace **14**, HSPFbasereplace 3.41 | **7,420 kWh** (exact 7,420.088) | pp. 77–78 | ±0.5 | **VR-010**: the table value SEERbasereplace 15 gives **7,292.55 kWh** | **Gap** |
 | A-P7 | Wassmer EER from SEER: −0.02·SEER² + 1.12·SEER | SEER 15 → **12.3** (EERbase); SEER 14 → **11.76 ≈ 11.8** | p. 71 fn 190, p. 78 fn 203 | exact / ±0.05 | VR-011 (SEER² notation) | **Gap** (checks the deemed EERbase) |
 
@@ -93,18 +93,18 @@ implemented. A-P6 needs an expert decision first (see §5).
 |---|---|---|---|---|
 | A-I1 | Wilmington; 36,000 all capacities; SEERee 16, HSPFee 9, EERee 13 | 107.85 / 85.0 / **192.85**; **0.1087429644** / 0.1040150094 | 719×(36000/15−36000/16)/1000; 935×(36000/8.8−36000/9)/1000; ΔkW (36000/12.3−36000/13)/1000 = 0.157598 | Yes |
 | A-I2 | DC; cooling 36,000 → 30,000; heating 34,000 → 29,000; 18 / 10 / 14 | 685.6667 / 792.1091 / **1,477.7758**; **0.5409407666** / 0.5174216028 | 935×(36000/15−30000/18)/1000; 822×(34000/8.8−29000/10)/1000; ΔkW 0.783972 | Yes |
-| A-I3 | **Baltimore**; cooling 42,000 → 36,000; heating 40,000 → 35,000; 17 / 9.5 / 13 | 507.6706 / 745.8373 / **1,253.5079**; **0.4453283302** / 0.4259662289 | 744×(42000/15−36000/17)/1000; 866×(40000/8.8−35000/9.5)/1000; ΔkW (42000/12.3−36000/13)/1000 = 0.645403 | **Gap** |
+| A-I3 | **Baltimore**; cooling 42,000 → 36,000; heating 40,000 → 35,000; 17 / 9.5 / 13 | 507.6706 / 745.8373 / **1,253.5079**; **0.4453283302** / 0.4259662289 | 744×(42000/15−36000/17)/1000; 866×(40000/8.8−35000/9.5)/1000; ΔkW (42000/12.3−36000/13)/1000 = 0.645403 | Yes |
 
 ### 3.3 Zero-savings, boundary and property cases
 
 | ID | Case | Expected | Source | Automated |
 |---|---|---|---|---|
 | A-Z1 | Equal capacities, efficient ratings = baseline (15 / 8.8 / 12.3) | All 5 outputs = 0 | Property | Yes |
-| A-M2 | A-I1 with SEERee **14** (below baseline) | cooling **−123.2571**, heating 85.0, total **−38.2571**; kW unchanged from A-I1; eligibility warning present | Independent: 719×(36000/15−36000/14)/1000 | **Partial** (sign and warning only) |
-| A-M3 | A-I1 with every capacity doubled (72,000) | Every output exactly 2× A-I1 (215.7 / 170.0 / 385.7; 0.2174859287 / 0.2080300188) | Property (linear in capacity) | **Gap** |
-| A-M4 | Any case | kW PJM / kW SSP = 0.66 / 0.69 = 22/23 exactly | Property | **Gap** (implied by A-I1/A-I2) |
+| A-M2 | A-I1 with SEERee **14** (below baseline) | cooling **−123.2571**, heating 85.0, total **−38.2571**; kW unchanged from A-I1; eligibility warning present | Independent: 719×(36000/15−36000/14)/1000 | Yes |
+| A-M3 | A-I1 with every capacity doubled (72,000) | Every output exactly 2× A-I1 (215.7 / 170.0 / 385.7; 0.2174859287 / 0.2080300188) | Property (linear in capacity) | Yes |
+| A-M4 | Any case | kW PJM / kW SSP = 0.66 / 0.69 = 22/23 exactly | Property | Yes |
 | A-M5 | Any case | kWh total = cooling + heating | Property | Implied by A-I1/A-I2 |
-| A-L1 | Each location with A-I1 equipment | Wilmington 192.85; Baltimore 744×0.15 + 866×(36000/8.8−4000)/1000 = **111.6 + 78.7273 = 190.3273**; DC 935×0.15 + 822×0.0909091 = **140.25 + 74.7273 = 214.9773** kWh | Independent | **Gap** (only hours checked) |
+| A-L1 | Each location with A-I1 equipment | Wilmington 192.85; Baltimore 744×0.15 + 866×(36000/8.8−4000)/1000 = **111.6 + 78.7273 = 190.3273**; DC 935×0.15 + 822×0.0909091 = **140.25 + 74.7273 = 214.9773** kWh | Independent | Yes |
 | A-B1 | Ratings 0, negative capacity, text instead of number, unknown location, override of a deemed value, missing input | Rejected with a per-field error | Engine input contract (not TRM) | Yes |
 | A-B2 | Efficient capacity **larger** than existing (upsizing) | Calculated (cooling savings may be negative); no TRM rule | Property; VR-005 | **Gap**; flag for expert (§5) |
 
@@ -138,10 +138,10 @@ MMBtu = G×8.3×44.1/0.80/10⁶; CCF = G/748; kWh_water = 2.07×CCF.
 |---|---|---|---|---|
 | S-I1e | DI and TOS, electric, GPMlow 2.0, defaults | 1,662.21 | kWh **181.9564581**, kW **0.009851992966**, CCF 2.222205882, kWh_water 4.599966176 | Yes |
 | S-I1g | DI, fossil fuel, GPMlow 2.0, defaults | 1,662.21 | MMBtu **0.760523407875**, CCF 2.222205882, kWh_water 4.599966176 | Yes |
-| S-I2e | Electric, GPMlow **1.5**, defaults | 3,324.42 | kWh **363.9129162**, kW 0.01970398593, CCF 4.444411765, kWh_water 9.199932353 | **Gap** |
-| S-I2g | Fossil fuel, GPMlow 1.5, defaults | 3,324.42 | MMBtu **1.52104681575** | **Gap** |
+| S-I2e | Electric, GPMlow **1.5**, defaults | 3,324.42 | kWh **363.9129162**, kW 0.01970398593, CCF 4.444411765, kWh_water 9.199932353 | Yes |
+| S-I2g | Fossil fuel, GPMlow 1.5, defaults | 3,324.42 | MMBtu **1.52104681575** | Yes |
 | S-I3e | DI, electric, GPMbase 2.8 (measured), GPMlow 1.5, 4 people | 6,832.8 | kWh **747.963306**, H 113.88, kW 0.02561518171, CCF 9.134759358, kWh_water 18.90895187 | Yes |
-| S-I3g | Same, **fossil fuel** | 6,832.8 | MMBtu **3.12626223** | **Gap** |
+| S-I3g | Same, **fossil fuel** | 6,832.8 | MMBtu **3.12626223** | Yes |
 
 ### 4.3 Zero-savings, boundary, fuel and property cases
 
@@ -153,8 +153,8 @@ MMBtu = G×8.3×44.1/0.80/10⁶; CCF = G/748; kWh_water = 2.07×CCF.
 | S-B2 | GPMbase 2.0, GPMlow 1.99 | Positive savings; no warning | Property | — | Yes |
 | S-B3 | GPMlow 0, people 0, text instead of number, NaN, override of a deemed value | Rejected | Engine input contract | — | Yes |
 | S-F1 | Electric → kWh, kW, CCF, kWh_water; fossil → MMBtu, CCF, kWh_water | Outputs for the other fuel omitted, not zero | TRM pp. 174, 176 | VR-023 | Yes |
-| S-M1 | Same flows, **4 people** vs 2.53 | kWh scales by 4/2.53 (287.678 vs 181.956), but **kW is identical** (0.009851992966) because people cancels in kWh/Hours | Property | **VR-022** | **Gap**; flag for expert (§5) |
-| S-M2 | GPMlow 1.5 vs 2.0 at GPMbase 2.5 | Every output exactly 2× (S-I2 = 2 × S-I1) | Property (linear in GPMbase − GPMlow) | — | **Gap** |
+| S-M1 | Same flows, **4 people** vs 2.53 | kWh scales by 4/2.53 (287.678 vs 181.956), but **kW is identical** (0.009851992966) because people cancels in kWh/Hours | Property | **VR-022** | Yes (records current behaviour); flag for expert (§5) |
+| S-M2 | GPMlow 1.5 vs 2.0 at GPMbase 2.5 | Every output exactly 2× (S-I2 = 2 × S-I1) | Property (linear in GPMbase − GPMlow) | — | Yes |
 | S-M3 | Any case | kWh_water = 2.07 × CCF; kW = kWh / H × 0.0039 | Property | VR-019 | Implied by S-I cases |
 
 ## 5. Ambiguous cases for expert review
@@ -177,6 +177,9 @@ pass/fail tests, or used to justify changing formulas, until an expert decides.
 
 ## 6. Coverage gaps, in priority order
 
+Items 1–4 and 6, and the A-P5 part of item 5, are covered by
+`tests/validation/test_engine_gaps.py` (§7 step 3).
+
 1. **A-I3, A-L1:** full Baltimore results, and all three locations with the same equipment.
 2. **A-M2:** exact values for the below-baseline case (currently only the sign is checked).
 3. **S-I2, S-I3g:** shower 1.5 GPM (both fuels) and the measured-flow fossil-fuel case.
@@ -194,7 +197,7 @@ pass/fail tests, or used to justify changing formulas, until an expert decides.
    hold the TRM values (each with a page reference) and the exact-arithmetic
    formulas, so every expected value is reproducible. A check would enforce
    that it never imports `trm_engine`.
-3. Add data-driven tests for the gaps in §6, one parametrized case per matrix
+3. **Done:** `tests/validation/test_engine_gaps.py`. Add data-driven tests for the gaps in §6, one parametrized case per matrix
    row, keyed by matrix ID and linked to VR IDs with `@pytest.mark.trm_issue`.
 4. Add a test that checks each TRM value in the reference module against the
    corresponding value in the measure YAML. This is a second, independent
